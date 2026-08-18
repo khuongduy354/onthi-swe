@@ -1,921 +1,444 @@
-# Ôn thi vấn đáp Kiến trúc phần mềm — đúng 22 câu
+# Kiến trúc phần mềm — core của đúng 22 câu
 
-## Cách học và cách viết trên A4
+Mỗi câu chỉ học ba thứ:
 
-Mỗi câu chỉ cần làm đúng ba việc:
+1. **Core:** ý chính của kiến trúc.
+2. **Vẽ:** sơ đồ tối giản.
+3. **Nói:** giải thích các box và mũi tên theo thứ tự.
 
-1. **Vẽ sơ đồ trước**: box là thành phần, mũi tên ghi giao thức hoặc dữ liệu.
-2. **Ghi từ khóa cạnh sơ đồ**: trách nhiệm, công cụ, các bước.
-3. **Chỉ ghi điều mình giải thích được**: thầy sẽ hỏi dựa trên phần mình đã viết.
+## Các góc nhìn — nhớ một lần
 
-Khi nói, đi theo thứ tự: **đây là gì → sơ đồ gồm gì → luồng chạy thế nào → công cụ nào → vì sao làm vậy**.
-
-> Thư mục ban đầu không có source code bài thực hành. Tài liệu dùng một stack mẫu dễ trình bày: React, FastAPI, PostgreSQL, Kafka, Pinecone, Docker/Kubernetes, OpenTelemetry/Grafana. Nếu bài nhóm dùng công nghệ khác thì đổi tên công nghệ, giữ nguyên vai trò của thành phần.
-
----
-
-# 1. Microservices: đặc tính chất lượng và góc nhìn triển khai
-
-## Vẽ
-
-```text
-Người dùng
-    |
-  HTTPS
-    v
-Load Balancer / Nginx
-    |
-API Gateway
-  |        |         |
-Auth     Document   Search       (Docker containers/Kubernetes)
-  |        |          |
-Postgres  Postgres   Pinecone
-              |
-            Kafka --> Index Worker
-```
-
-## Ghi và nói
-
-Các đặc tính mong muốn:
-
-- **Performance**: thời gian phản hồi thấp.
-- **Scalability**: tăng replica khi số request tăng.
-- **Availability**: một instance chết, instance khác vẫn phục vụ.
-- **Modifiability/deployability**: sửa và deploy một service mà không deploy toàn hệ thống.
-- **Security**: xác thực, phân quyền, mã hóa kết nối.
-
-Cách kiểm tra:
-
-1. Dùng JMeter/Locust tạo nhiều request.
-2. Đo throughput, p95 latency và error rate.
-3. Tắt một container để kiểm tra failover.
-4. Tăng replica rồi chạy lại cùng bài test.
-5. Dùng OWASP ZAP kiểm tra lỗi web cơ bản; dùng UptimeRobot/Pingdom kiểm tra availability.
-
-Các bước triển khai:
-
-1. Test và build từng service.
-2. Tạo Docker image, push lên registry.
-3. Cấu hình database, secret và network.
-4. Chạy bằng Docker Compose hoặc `kubectl apply`.
-5. Kiểm tra health endpoint, log và giao diện.
-
-```bash
-docker compose up -d --build
-docker compose ps
-curl http://localhost:8080/health
-kubectl get pods,svc
-```
-
-**Bản in:** sơ đồ, kết quả JMeter/Locust, `docker compose ps` hoặc `kubectl get pods`.
+- **Logic view:** hệ thống có những thành phần nào và mỗi thành phần làm gì.
+- **Deployment view:** phần mềm chạy trên máy/container nào.
+- **Process view:** dữ liệu đi qua hệ thống theo thứ tự nào.
+- **Development view:** source code chia thành thư mục/module nào.
+- **Storage view:** lưu những dữ liệu nào và chúng liên hệ ra sao.
+- **Security view:** xác thực, phân quyền và mã hóa ở đâu.
+- **Observability view:** thu log và trace ở đâu.
 
 ---
 
-# 2. Microservices: góc nhìn logic, giao tiếp và góc nhìn tiến trình
+## 1. Microservices — chất lượng và deployment
 
-## Vẽ logic view
+**Core:** Chia hệ thống thành các service nhỏ, mỗi service có thể phát triển, deploy và scale độc lập.
 
-```text
-Web UI --> API Gateway
-              |--> Auth Service: đăng nhập, token
-              |--> Document Service: quản lý tài liệu
-              |--> Search Service: tìm kiếm
+**Vẽ:** `User → Load Balancer → API Gateway → [Order Service | Payment Service] → Database`
 
-Document Service --DocumentUploaded event--> Kafka --> Index Service
-Search Service ------------------------------> Pinecone
-```
+**Chất lượng:**
 
-Giao tiếp giữa service:
+- Scalability: tăng số instance của service bị tải cao.
+- Availability: một instance chết, instance khác tiếp tục chạy.
+- Modifiability: sửa một service ít ảnh hưởng service khác.
+- Performance: đo latency và throughput.
 
-- **REST/gRPC đồng bộ** khi cần kết quả ngay. Phải có timeout và retry.
-- **Kafka/message bất đồng bộ** khi xử lý nền. Producer không cần chờ consumer.
-- Mỗi service có trách nhiệm và dữ liệu riêng; không đọc trực tiếp bảng riêng của service khác.
+**Kiểm tra:** JMeter/Locust tạo tải; tắt một instance; tăng replica rồi đo lại.
 
-## Vẽ process view: upload tài liệu
+**Triển khai:** test → build Docker image → deploy bằng Docker Compose/Kubernetes → kiểm tra health.
 
-```text
-User -> UI -> Gateway -> Document Service
-                         1. kiểm tra file và quyền
-                         2. lưu metadata
-                         3. trả 202 + document_id
-                         4. phát DocumentUploaded
-
-Kafka -> Index Worker -> tách đoạn -> embedding -> Pinecone
-UI -> Document Service -> xem trạng thái indexed
-```
-
-Input là file và token. Output ban đầu là `document_id`; output cuối là tài liệu đã tìm kiếm được.
-
-**Bản in:** cây source, request/response API và log worker.
+**In:** kết quả load test và trạng thái containers/pods.
 
 ---
 
-# 3. Microservices: góc nhìn bảo mật và mở rộng
+## 2. Microservices — logic, giao tiếp và process
 
-## Vẽ security view
+**Core:** Logic view cho biết service nào làm gì; process view cho biết một use case chạy theo thứ tự nào.
 
-```text
-[Internet]
-    |
- HTTPS/TLS
-    v
-[WAF/API Gateway] -- kiểm tra JWT --> [Services]
-                                          |
-                              private network + tài khoản DB riêng
-                                          |
-                                  [Encrypted Database]
+**Vẽ logic:** `Web → Gateway → Order Service → Order DB`; `Order Service → Payment Service`
 
-Secrets Manager: giữ API key/password
-Audit Log: ghi hành động quan trọng
-```
+**Giao tiếp:**
 
-Ghi:
+- REST/gRPC khi cần câu trả lời ngay.
+- Message broker khi xử lý nền.
 
-- Authentication xác định người dùng là ai.
-- Authorization kiểm tra người dùng được truy cập tài nguyên nào.
-- TLS mã hóa khi truyền; database mã hóa khi lưu.
-- Token/API key để trong Secrets Manager, không ghi vào source hoặc log.
-- Rate limit/WAF chống lạm dụng; service dùng quyền tối thiểu.
+**Vẽ process đặt hàng:**
 
-## Vẽ scalability view
+`User → Order Service → lưu order → Payment Service → thanh toán → trả kết quả`
 
-```text
-                  --> API replica 1 --|
-Load Balancer ----> API replica 2 ----|--> Redis / Database
-                  --> API replica N --|
+Input là thông tin đơn hàng; output là đơn hàng thành công hoặc thất bại.
 
-Kafka partitions --> nhiều Index Worker trong consumer group
-```
-
-Các bước mở rộng:
-
-1. Chạy load test lấy kết quả ban đầu.
-2. Xác định service nghẽn bằng CPU, latency hoặc queue lag.
-3. Tăng replica đúng service.
-4. Chạy lại cùng bài test và so sánh.
-
-```bash
-kubectl scale deployment search-service --replicas=3
-kubectl get pods
-```
-
-**Bản in:** cấu hình auth/secret đã che giá trị, lệnh scale, số pod trước và sau.
+**In:** request/response và cây source.
 
 ---
 
-# 4. Microservices: góc nhìn giám sát logging và tracing
+## 3. Microservices — security và scaling
 
-## Vẽ
+**Core security:** chỉ người đúng danh tính và đúng quyền mới truy cập được dữ liệu.
 
-```text
-Request có trace_id
-        |
-Gateway -> Service A -> Service B
-   |          |            |
-   +----------+------------+--> OpenTelemetry Collector
-                                  |--> Loki/ELK: logs
-                                  |--> Jaeger: traces
-                                  |--> Prometheus: metrics
-                                                |
-                                             Grafana
-```
+**Vẽ:** `User --HTTPS/JWT→ Gateway --kiểm tra quyền→ Services → encrypted DB`
 
-## Ghi và nói
+- Authentication: bạn là ai?
+- Authorization: bạn được làm gì?
+- TLS mã hóa dữ liệu khi truyền.
+- Secret không để trong source code.
 
-- **Log**: chi tiết sự kiện/lỗi của từng service.
-- **Trace**: đường đi của một request qua nhiều service.
-- Mỗi request có `trace_id`; service truyền ID này qua HTTP, gRPC hoặc message header.
-- Log nên có time, level, service, operation, trace_id và error; không log token/password.
+**Core scaling:** thêm instance để chia tải.
 
-Các bước:
+**Vẽ:** `Load Balancer → [Service 1 | Service 2 | Service 3]`
 
-1. Cài OpenTelemetry SDK cho các service.
-2. Truyền trace context giữa các service.
-3. Gửi log/span đến OpenTelemetry Collector.
-4. Collector gửi dữ liệu đến Loki/ELK và Jaeger.
-5. Gửi một request, tìm log theo `trace_id`, mở trace và xem service chậm/lỗi.
+**Thực hiện:** load test → tăng replica → chạy lại → so latency/throughput.
 
-```bash
-docker compose logs -f api search-service index-worker
-kubectl logs -f deployment/search-service
-```
-
-**Bản in:** log có trace ID, giao diện Jaeger và Grafana.
+**In:** cấu hình bảo mật đã che secret và lệnh scale.
 
 ---
 
-# 5. Microservices: góc nhìn phát triển, thay đổi/kiểm thử và lưu trữ
+## 4. Microservices — logging và tracing
 
-## Vẽ development view
+**Core:** Log cho biết chuyện gì xảy ra trong một service; trace cho biết một request đi qua những service nào.
 
-```text
-project/
-├── services/
-│   ├── auth-service/       # đăng nhập và token
-│   ├── document-service/   # tài liệu
-│   ├── search-service/     # tìm kiếm
-│   └── index-worker/       # xử lý event
-├── shared-contracts/       # OpenAPI/event schema
-├── tests/                  # contract và end-to-end test
-└── deploy/                 # Docker Compose/Kubernetes
-```
+**Vẽ:**
 
-Ví dụ thêm Notification Service:
+`Gateway → Service A → Service B → OpenTelemetry → [Log system | Jaeger]`
 
-1. Định nghĩa event `DocumentIndexed`.
-2. Tạo service mới subscribe event.
-3. Unit test service mới.
-4. Integration test với Kafka.
-5. End-to-end test upload → index → notification.
-6. Build và deploy riêng Notification Service.
+- Mỗi request có một `trace_id`.
+- Các service truyền cùng `trace_id` cho nhau.
+- Log chứa thời gian, service, thao tác, trace ID và lỗi.
+- Không log password/token.
 
-Cách này ít ảnh hưởng mã nguồn cũ vì service mới chỉ phụ thuộc vào event contract.
+**Công cụ:** OpenTelemetry, ELK/Loki, Jaeger, Grafana.
 
-## Vẽ storage view
+**Kiểm tra:** gửi request → tìm log theo trace ID → mở trace và xem toàn bộ đường đi.
 
-```text
-User 1---N Document 1---N Chunk
-                    |
-                    +--> Vector trong Pinecone
-
-Document DB: id, owner_id, name, status
-Chunk: id, document_id, position, vector_id
-Outbox Event: event_id, type, payload, published
-```
-
-```bash
-docker compose build notification-service
-docker compose run --rm notification-service pytest
-docker compose up -d notification-service
-```
-
-**Bản in:** cây thư mục, lệnh test/build service mới và dữ liệu trong DB.
+**In:** log và giao diện trace.
 
 ---
 
-# 6. Micro-Frontends: đặc tính chất lượng, logic view, kết hợp và giao tiếp
+## 5. Microservices — development và storage
 
-## Vẽ
+**Core development:** mỗi service là một module/source folder độc lập.
 
 ```text
-Browser
-  |
-App Shell: layout, routing, authentication
-  |--------------|----------------|
-Account MFE     Search MFE       Report MFE
-  |              |                 |
-  +--------------+-----------------+--> Backend API
-
-React + Module Federation
+services/
+├── order-service/
+├── payment-service/
+└── notification-service/
+deploy/
+tests/
 ```
 
-## Ghi và nói
+**Ví dụ mở rộng:** thêm Notification Service nhận sự kiện `OrderCreated`; test và deploy riêng, không sửa Payment Service.
 
-Đặc tính mong muốn:
+**Core storage:** mỗi service sở hữu dữ liệu của mình.
 
-- Dễ thay đổi và deploy từng giao diện độc lập.
-- Một MFE lỗi, shell và MFE khác vẫn chạy.
-- Tải trang nhanh, bundle không quá lớn.
-- Giao diện thống nhất nhờ shared design system.
-- Dễ test riêng bằng Storybook/component test.
+**Vẽ:** `Customer 1—N Order 1—N OrderItem`; Order Service sở hữu Order DB.
 
-Kiểm tra: Lighthouse đo tốc độ; tắt một remote để xem fallback; build/deploy một MFE; chạy Storybook và E2E.
+**Kiểm thử:** unit test service mới → integration test message → end-to-end test đặt hàng.
 
-Cách kết hợp: App Shell tải các remote component lúc runtime bằng Module Federation, sau đó đặt chúng vào đúng route/layout.
-
-Cách giao tiếp:
-
-- Shell truyền props/callback cho MFE.
-- Dùng router/URL cho navigation.
-- Dùng event bus cho sự kiện đơn giản.
-- Tránh shared mutable global state giữa tất cả MFE.
-
-**Bản in:** giao diện từng MFE, giao diện tổng hợp và Storybook.
+**In:** cây thư mục, lệnh test và sơ đồ dữ liệu.
 
 ---
 
-# 7. Micro-Frontends: góc nhìn triển khai
+## 6. Micro-Frontends — chất lượng, logic, kết hợp và giao tiếp
 
-## Vẽ
+**Core:** Chia frontend lớn thành các phần giao diện độc lập theo chức năng.
 
-```text
-Git repo Shell --> CI build --> CDN /shell
-Git repo Search MFE --> CI build --> CDN /search/remoteEntry.js
-Git repo Report MFE --> CI build --> CDN /report/remoteEntry.js
+**Vẽ:** `App Shell → [Product MFE | Cart MFE | Account MFE] → Backend API`
 
-Browser --> tải Shell --> tải các remote từ CDN --> gọi Backend API
-```
+- App Shell giữ layout và routing.
+- Mỗi MFE phụ trách một vùng chức năng.
+- Có thể kết hợp bằng Module Federation.
+- Giao tiếp bằng props, callback hoặc event; tránh shared global state lớn.
 
-## Các bước triển khai
+**Chất lượng:** dễ thay đổi/deploy từng MFE, lỗi một MFE không làm hỏng toàn trang, tải trang vẫn nhanh.
 
-1. Mỗi MFE chạy lint, test và build riêng.
-2. Đưa artifact có version/hash lên CDN.
-3. Cập nhật manifest/import map của Shell.
-4. Mở preview và chạy E2E từ Shell.
-5. Deploy canary, theo dõi lỗi tải remote.
-6. Nếu lỗi, trỏ manifest về version cũ.
+**Kiểm tra:** Storybook, component test, Lighthouse, thử tắt một MFE để xem fallback.
 
-```bash
-npm ci
-npm test
-npm run build
-npx storybook build --quiet
-```
-
-**Bản in:** lệnh build/deploy, trang hosting/CDN và giao diện sau deploy.
+**In:** từng MFE và trang đã kết hợp.
 
 ---
 
-# 8. JAMstack: đặc tính chất lượng và góc nhìn logic
+## 7. Micro-Frontends — deployment
 
-## Vẽ
+**Core:** mỗi MFE được build và deploy riêng; browser tải chúng vào App Shell.
 
-```text
-Git / Headless CMS
-        |
-     CI Build
-        |
-Next.js/Astro tạo HTML, CSS, JS tĩnh
-        |
-       CDN ----------------> Browser
-                               |
-                               +--> API cho dữ liệu động
-```
+**Vẽ:**
 
-## Ghi và nói
+`Product repo → CI → CDN/product.js`
 
-JAMstack gồm JavaScript, API và Markup được tạo trước. Trang tĩnh được phát từ CDN.
+`Cart repo → CI → CDN/cart.js`
 
-Đặc tính mong muốn:
+`Browser → App Shell → tải product.js và cart.js`
 
-- Nhanh và chịu tải tốt vì file ở CDN.
-- Availability cao vì không cần origin xử lý mỗi trang.
-- Ít bề mặt tấn công hơn.
-- Deploy dễ: push Git → build → publish.
+**Các bước:** test → build từng MFE → upload CDN → cập nhật Shell → chạy E2E → rollback version nếu lỗi.
 
-Kiểm tra:
+**Công cụ:** npm, CI/CD, CDN, Docker hoặc static hosting.
 
-1. Dùng Lighthouse đo performance.
-2. Load test URL CDN.
-3. Tắt API và kiểm tra trang tĩnh vẫn mở.
-4. Thay content, build lại và kiểm tra nội dung mới.
-
-Logic: content đi vào static-site generator lúc build; browser nhận HTML từ CDN; chỉ phần động mới gọi API.
-
-**Bản in:** giao diện, cây thư mục và kết quả `npm run build`.
+**In:** lệnh build/deploy và giao diện sau deploy.
 
 ---
 
-# 9. RAG: đặc tính chất lượng và góc nhìn logic
+## 8. JAMstack — chất lượng và logic
 
-## Vẽ
+**Core:** tạo HTML trước lúc build và phát file tĩnh từ CDN; JavaScript gọi API cho phần động.
 
-```text
-INDEXING:
-PDF/Notion/GitHub -> Loader -> Clean -> Chunk -> Embedding -> Pinecone
+**Ví dụ:** blog tĩnh.
 
-QUERY:
-User question -> Query embedding -> tìm top-k trong Pinecone
-              -> ghép question + context -> LLM -> Answer + citations
-```
+**Vẽ:** `Content/Git → Static Site Generator → HTML/CSS/JS → CDN → Browser`; `Browser → API` nếu cần dữ liệu động.
 
-## Ghi và nói
+**Chất lượng:** nhanh, dễ scale, availability cao, ít server public hơn, deploy đơn giản.
 
-RAG lấy tài liệu liên quan làm context cho LLM trước khi sinh câu trả lời.
+**Kiểm tra:** Lighthouse; load test CDN; sửa bài viết → build lại → kiểm tra nội dung mới.
 
-Đặc tính mong muốn:
+**Công cụ:** Next.js/Astro, GitHub Actions, Netlify/Vercel/CDN.
 
-- **Độ liên quan**: top-k chunks đúng với câu hỏi.
-- **Độ chính xác**: câu trả lời dựa trên context và citation đúng.
-- **Performance**: thời gian query thấp.
-- **Freshness**: tài liệu mới sớm tìm được.
-- **Security**: user chỉ retrieve tài liệu mình được phép đọc.
-- **Reliability**: indexing retry được, không ghi vector trùng.
-
-Cách kiểm tra:
-
-1. Chuẩn bị bộ câu hỏi và tài liệu đúng mong đợi.
-2. Kiểm tra chunks top-k.
-3. Kiểm tra câu trả lời và citations.
-4. Đo p95 latency và error rate.
-5. Thêm tài liệu mới rồi kiểm tra thời gian đến khi tìm được.
-6. Thử user khác để kiểm tra tenant filter.
-
-Công cụ mẫu: FastAPI, embedding/LLM API, Pinecone, pytest, Locust.
-
-**Bản in:** giao diện hỏi đáp, citations, cây source và một vector record có metadata.
+**In:** giao diện, cây source và kết quả build.
 
 ---
 
-# 10. RAG: góc nhìn triển khai
+## 9. RAG — chất lượng và logic
 
-## Vẽ
+**Core:** tìm các đoạn tài liệu liên quan rồi đưa chúng cho LLM để trả lời.
 
-```text
-Browser -> Web/CDN -> Query API container
-                         |--> LLM API
-                         |--> Embedding API
-                         +--> Pinecone
+**Vẽ indexing:** `Documents → Chunking → Embedding → Vector DB`
 
-Data sources -> Crawler container -> Queue/Temporal -> Index Worker -> Pinecone
+**Vẽ query:** `Question → Retrieve top-k chunks → Prompt + chunks → LLM → Answer`
 
-Tất cả container -> OpenTelemetry/Grafana
-```
+**Ví dụ:** hỏi đáp trên giáo trình.
 
-## Các bước triển khai
+**Chất lượng:** lấy đúng đoạn, trả lời đúng tài liệu, citation đúng, phản hồi nhanh, không lấy tài liệu người khác.
 
-1. Tạo Pinecone index đúng dimension của embedding model.
-2. Cấu hình secret cho LLM, embedding và Pinecone.
-3. Build image cho Query API, Crawler và Worker.
-4. Deploy queue/workflow và worker.
-5. Chạy indexing một lượng dữ liệu nhỏ và kiểm tra vector.
-6. Deploy Query API và Web.
-7. Hỏi một câu đã biết đáp án; kiểm tra citation, log và latency.
-8. Sau khi ổn mới index toàn bộ dữ liệu.
+**Kiểm tra:** chuẩn bị câu hỏi có đáp án → xem top-k chunks → xem answer/citation → đo latency.
 
-```bash
-docker compose up -d query-api crawler index-worker
-docker compose logs -f index-worker
-curl -X POST http://localhost:8000/query \
-  -H 'Content-Type: application/json' \
-  -d '{"question":"What is software architecture?"}'
-```
+**Công cụ:** embedding model, Pinecone/FAISS, LLM, FastAPI.
 
-**Bản in:** lệnh triển khai, trạng thái containers, Pinecone UI và giao diện query.
+**In:** giao diện hỏi đáp và cây source.
 
 ---
 
-# 11. LLM-based Agent: đặc tính chất lượng và góc nhìn logic
+## 10. RAG — deployment
 
-## Vẽ
+**Core:** tách phần indexing chạy nền khỏi phần query phục vụ người dùng.
 
-```text
-User -> Chat UI -> Agent Orchestrator <-> LLM
-                       |
-                       v
-                  Permission Check
-                       |
-             Tool Registry: GitHub, RAG, Search
-                       |
-                   Tool Result
-                       |
-                 Agent trả lời
+**Vẽ:**
 
-Memory/Checkpoint và Audit Log nối với Agent Orchestrator
-```
+`Documents → Index Worker → Embedding API → Vector DB`
 
-## Ghi và nói
+`Browser → Query API → Vector DB + LLM API`
 
-Agent dùng LLM để chọn và gọi tool nhiều bước nhằm hoàn thành mục tiêu.
+**Các bước:** tạo vector index → cấu hình API keys → deploy worker → index dữ liệu mẫu → deploy query API → hỏi thử câu đã biết đáp án.
 
-Đặc tính mong muốn:
+**Công cụ:** Docker, cloud hosting, Pinecone/FAISS, LLM API.
 
-- Hoàn thành đúng nhiệm vụ.
-- Chỉ gọi tool và dữ liệu được cấp quyền.
-- Có giới hạn bước, thời gian và chi phí.
-- Retry/resume được khi tool lỗi.
-- Có log/audit cho từng tool call.
-- Dễ thêm tool mới qua interface chung.
-
-Cách kiểm tra:
-
-1. Tạo danh sách task có kết quả mong đợi.
-2. Mock tool để test agent flow.
-3. Test tool timeout/error và agent retry.
-4. Test user không có quyền.
-5. Đo task success, latency, token cost và số tool calls.
-
-**Bản in:** giao diện agent, cây source và một tool call thành công/thất bại.
+**In:** lệnh triển khai, vector DB và giao diện query.
 
 ---
 
-# 12. LLM-based Agent: góc nhìn triển khai
+## 11. LLM-based Agent — chất lượng và logic
 
-## Vẽ
+**Core:** Agent dùng LLM để chọn và gọi tool nhằm hoàn thành một mục tiêu.
 
-```text
-Client -> API Gateway/Auth -> Agent API
-                              |
-                        Temporal/Queue
-                              |
-                         Agent Workers
-                         |     |      |
-                       LLM   RAG   Tool Gateway
-                                     |
-                              GitHub/External APIs
+**Vẽ:** `User → Agent → LLM → chọn Tool → Tool Result → Agent → Answer`
 
-Workers -> Checkpoint DB, Secrets Manager, Observability
-```
+**Ví dụ:** agent nhận câu hỏi toán, gọi Calculator rồi trả kết quả.
 
-## Các bước triển khai
+**Thành phần:** Agent orchestrator, LLM, tool registry, memory và permission check.
 
-1. Định nghĩa schema cho từng tool và quyền cần thiết.
-2. Lưu API key/token trong Secrets Manager.
-3. Build Agent API và Worker images.
-4. Deploy workflow/queue, checkpoint DB và workers.
-5. Cấu hình max steps, timeout, retry và cost limit.
-6. Test ở staging bằng read-only hoặc mock tools.
-7. Deploy cho một nhóm user nhỏ bằng feature flag.
-8. Theo dõi task success, lỗi, latency và cost rồi mới mở rộng.
+**Chất lượng:** hoàn thành đúng task, chỉ gọi tool được phép, không chạy vô hạn, theo dõi được tool calls, dễ thêm tool.
 
-**Bản in:** giao diện công cụ deploy, trạng thái worker và trace một agent run.
+**Kiểm tra:** task có đáp án biết trước; tool lỗi/timeout; user không có quyền; đo latency và số tool calls.
+
+**In:** giao diện agent và cây source.
 
 ---
 
-# 13. Event Sourcing: đặc tính chất lượng và góc nhìn logic
+## 12. LLM-based Agent — deployment
 
-## Vẽ
+**Core:** Agent API nhận yêu cầu; worker chạy các bước và gọi LLM/tools.
 
-```text
-UI --Command--> Command API --> Aggregate kiểm tra business rule
-                                      |
-                                      v
-                           Append-only Event Store
-                                      |
-                                  Projector
-                                      |
-                                  Read Model
-                                      |
-UI <--Result-- Query API <-------------+
-```
+**Vẽ:** `Client → Agent API → Agent Worker → [LLM | Tools]`; `Worker → State DB`; tất cả → logs/traces.
 
-## Ghi và nói
+**Các bước:** cấu hình tool và permission → lưu secret → deploy API/worker → đặt max steps/timeout → test với tool giả → mở cho user.
 
-Event Sourcing lưu các sự kiện đã xảy ra thay vì chỉ lưu trạng thái cuối.
+**Công cụ:** Docker, queue/workflow engine, LLM API, database, observability tools.
 
-Ví dụ: lưu `QuizAnswered(+10)`, `AnswerCorrected(-2)` thay vì chỉ lưu `score=8`.
-
-Đặc tính mong muốn:
-
-- Audit được lịch sử thay đổi.
-- Có thể khôi phục trạng thái bằng replay events.
-- Tạo thêm read model/report mới từ events cũ.
-- Append event nhanh; query nhanh qua read model.
-- Không mất hoặc ghi trùng event.
-
-Cách kiểm tra: gửi command và xem event; xóa read model rồi replay; so trạng thái trước/sau; gửi duplicate command; tạo concurrent update để kiểm tra version.
-
-Công cụ: EventStoreDB hoặc PostgreSQL append-only table, projector, PostgreSQL read model.
-
-**Bản in:** giao diện nhập dữ liệu, event rows và cây source.
+**In:** trạng thái deploy và một agent run.
 
 ---
 
-# 14. Event Sourcing: góc nhìn triển khai
+## 13. Event Sourcing — chất lượng và logic
 
-## Vẽ
+**Core:** lưu chuỗi sự kiện bất biến thay vì chỉ lưu trạng thái cuối.
 
-```text
-Browser -> Command API containers -> Event Store
-Browser -> Query API containers   -> Read Database
-Event Store -> Subscription -> Projector Workers -> Read Database
+**Ví dụ tài khoản ngân hàng:**
 
-Event Store -> Backup
-Tất cả services -> Logs/Metrics
-```
+`0 --MoneyDeposited(100)→ 100 --MoneyWithdrawn(30)→ 70`
 
-## Các bước triển khai
+**Vẽ:** `Command → Aggregate kiểm tra rule → Event Store → Projector → Read Model → Query`
 
-1. Deploy Event Store có volume, backup và authentication.
-2. Tạo event schema gồm event ID, aggregate ID, type, version, payload, time.
-3. Deploy Command API và test append event.
-4. Deploy Read DB và Projector.
-5. Replay events để tạo read model.
-6. Deploy Query API và kiểm tra dữ liệu.
-7. Theo dõi append error và projection lag.
+**Chất lượng:** có lịch sử/audit, dựng lại trạng thái, tạo read model mới, không mất/trùng event.
 
-```bash
-docker compose up -d eventstore command-api projector read-db query-api
-docker compose logs -f projector
-```
+**Kiểm tra:** gửi command → xem event → xóa read model → replay events → kết quả phải giống trước.
 
-**Bản in:** lệnh triển khai, Event Store UI và trạng thái projector.
+**Công cụ:** EventStoreDB hoặc PostgreSQL, projector, read database.
+
+**In:** giao diện nhập, event rows và cây source.
 
 ---
 
-# 15. Event Sourcing: process view xuất một danh sách
+## 14. Event Sourcing — deployment
 
-## Vẽ
+**Core:** Command API ghi Event Store; Projector đọc events và cập nhật Read DB; Query API đọc Read DB.
 
-```text
-Trước đó:
-Event Store -> Projector -> Read Model chứa danh sách hiện tại
+**Vẽ:** `Command API → Event Store → Projector → Read DB ← Query API`
 
-Khi người dùng xem:
-User -> UI -> Query API
-               1. kiểm tra token, filter, page
-               2. query Read Model
-               3. đổi dữ liệu thành DTO
-UI <- JSON list + total <- Query API
-```
+**Các bước:** deploy Event Store → deploy Command API → deploy Read DB/Projector → replay events → deploy Query API → kiểm tra dữ liệu.
 
-## Ghi và nói
+**Công cụ:** Docker, EventStoreDB/PostgreSQL, API service.
 
-Ví dụ danh sách các câu đã trả lời:
-
-- Input: user ID trong token, page, page size và filter.
-- Query API kiểm tra quyền và tham số.
-- Query API đọc read model đã được projector tạo sẵn.
-- Output: danh sách, tổng số phần tử và thông tin phân trang.
-- Không replay toàn bộ event cho mỗi lần xem vì sẽ chậm.
-- Nếu projector chưa xử lý hết event, danh sách có thể chậm cập nhật một khoảng ngắn.
-
-**Bản in:** giao diện danh sách và dữ liệu tương ứng trong read model.
+**In:** lệnh deploy và giao diện Event Store.
 
 ---
 
-# 16. Event Sourcing: lưu trữ, luồng dữ liệu và tái tạo trạng thái
+## 15. Event Sourcing — process xuất danh sách
 
-## Vẽ storage
+**Core:** danh sách được đọc từ Read Model đã tính sẵn, không replay mọi event cho mỗi request.
 
-```text
-Event Stream
-  aggregate_id
-  current_version
-       |
-       +---N Domain Event
-              event_id
-              aggregate_id
-              version
-              event_type
-              payload
-              occurred_at
+**Vẽ:**
 
-Projector Checkpoint: projector_name, last_position
-Read Model: entity_id, current_state, source_version
-```
+`Event Store → Projector → Read Model`
 
-## Vẽ luồng trạng thái
+`User → Query API → Read Model → List → User`
 
-```text
-score=0 --QuizAnswered(+10)--> score=10
-         --QuizAnswered(+8)--> score=18
-         --AnswerCorrected(-2)--> score=16
-```
+**Ví dụ:** danh sách giao dịch ngân hàng.
 
-## Các bước tái tạo
+**Luồng:** nhận filter/page → kiểm tra quyền → query Read Model → tạo DTO → trả danh sách.
 
-1. Đọc events của aggregate theo đúng version.
-2. Bắt đầu bằng trạng thái rỗng hoặc snapshot gần nhất.
-3. Lần lượt áp dụng từng event lên state.
-4. Kết quả cuối là trạng thái hiện tại.
-5. Muốn rebuild toàn bộ read model: tạo bảng mới, reset checkpoint, replay tất cả events.
-6. So sánh count/trạng thái; đúng rồi mới cho Query API dùng bảng mới.
+Input là user, filter và page. Output là danh sách cùng tổng số dòng.
 
-Công cụ: EventStoreDB/PostgreSQL, projector script, checkpoint table và DB viewer.
-
-**Bản in:** Event Store trước replay, Read Model sau replay và lệnh/script rebuild.
+**In:** giao diện danh sách.
 
 ---
 
-# 17. Event-Driven: đặc tính chất lượng và góc nhìn logic
+## 16. Event Sourcing — storage, data flow và rebuild
 
-## Vẽ
+**Core storage:** Event Store chứa `event_id`, `aggregate_id`, `type`, `version`, `payload`, `time`; checkpoint lưu vị trí projector đã đọc.
 
-```text
-Upload UI -> Document API -> Document DB
-                    |
-             DocumentUploaded
-                    v
-                  Kafka
-          |-----------|------------|
-       Extractor    Audit       Notification
-          |
-     TextExtracted
-          v
-        Kafka -> Index Consumer -> Pinecone
-```
+**Vẽ:** `Initial State + Event 1 + Event 2 + ... → Current State`
 
-## Ghi và nói
+**Các bước rebuild:**
 
-Producer phát event; broker chuyển event; consumer đăng ký và xử lý. Producer không cần biết tất cả consumers.
+1. Bắt đầu từ state rỗng.
+2. Đọc events theo đúng version.
+3. Áp dụng lần lượt từng event.
+4. Lưu kết quả vào Read Model mới.
+5. So sánh kết quả rồi chuyển Query API sang model mới.
 
-Đặc tính mong muốn:
+**Công cụ:** EventStoreDB/PostgreSQL và projector script.
 
-- Dễ thêm consumer mà không sửa producer.
-- Scale consumer để xử lý nhiều event.
-- Broker giữ event khi consumer tạm thời chết.
-- Xử lý retry và không ghi trùng.
-- Theo dõi được event từ producer đến consumer.
-
-Cách kiểm tra:
-
-1. Phát event test và kiểm tra tất cả consumer cần thiết.
-2. Tắt consumer, phát event, bật lại và kiểm tra event vẫn được xử lý.
-3. Gửi duplicate event để kiểm tra idempotency.
-4. Tạo tải, đo events/second và consumer lag.
-5. Thêm consumer mới và chứng minh producer không đổi.
-
-Công cụ: Kafka/RabbitMQ, FastAPI/Node, PostgreSQL, Docker, Locust, Grafana.
-
-**Bản in:** UI nhập dữ liệu, Kafka/topic UI và cây source.
+**In:** events trước và Read Model sau replay.
 
 ---
 
-# 18. Event-Driven: góc nhìn triển khai
+## 17. Event-Driven — chất lượng và logic
 
-## Vẽ
+**Core:** Producer phát event; broker chuyển event; consumers tự phản ứng. Producer không cần biết consumer nào tồn tại.
 
-```text
-Client -> API containers -> PostgreSQL
-               |
-          Outbox Relay
-               |
-        Kafka cluster/topics
-          |       |       |
-      Extractor Indexer Notifier     (consumer containers)
-                  |
-               Pinecone
+**Ví dụ:** `Order Service --OrderCreated→ Kafka → [Email Consumer | Inventory Consumer]`
 
-Kafka/consumers -> OpenTelemetry/Grafana
-```
+**Chất lượng:** dễ thêm consumer, scale consumer, chịu lỗi tạm thời, xử lý event không trùng.
 
-## Các bước triển khai
+**Kiểm tra:** phát event → xem consumers; tắt consumer rồi bật lại; gửi duplicate; tạo tải và đo queue lag.
 
-1. Deploy Kafka/RabbitMQ và tạo topic/queue.
-2. Cấu hình replication, retention và quyền truy cập.
-3. Deploy consumers trước.
-4. Deploy database/outbox relay.
-5. Deploy producer API.
-6. Gửi một event test và kiểm tra toàn bộ luồng.
-7. Theo dõi consumer lag, retry và dead-letter queue.
-8. Tăng consumer replicas nếu lag cao.
+**Công cụ:** Kafka/RabbitMQ, service API, database, Grafana.
 
-```bash
-docker compose up -d kafka api extractor indexer notifier
-docker compose logs -f extractor indexer
-kubectl scale deployment indexer --replicas=3
-```
-
-**Bản in:** lệnh triển khai, broker UI và trạng thái consumers.
+**In:** giao diện nhập, broker UI và cây source.
 
 ---
 
-# 19. Event-Driven: process view nhập dữ liệu và kiểm tra hợp lệ
+## 18. Event-Driven — deployment
 
-## Vẽ
+**Core:** broker và từng producer/consumer chạy thành các process/container riêng.
 
-```text
-User -> API: dữ liệu + token + idempotency key
-          |
-          +-- kiểm tra schema/type/required fields
-          +-- kiểm tra authentication/authorization
-          +-- kiểm tra business rule
-          |
-      invalid -> trả 400/403, không lưu
-          |
-        valid
-          v
-DB transaction: lưu dữ liệu + Outbox Event
-          |
-        trả 202 + id
-          |
-Outbox Relay -> Kafka -> Consumer
-                         |
-                    validate event
-                    xử lý và lưu kết quả
-                    lỗi tạm thời -> retry
-                    lỗi nhiều lần -> DLQ
-```
+**Vẽ:** `Client → Producer API → Kafka → [Consumer A | Consumer B] → Databases`
 
-## Ghi và nói
+**Các bước:** deploy broker/topic → deploy consumers → deploy producer → gửi event test → kiểm tra kết quả → scale consumer nếu lag cao.
 
-- Outbox bảo đảm dữ liệu và event được ghi trong cùng DB transaction.
-- Consumer kiểm tra `event_id`; nếu đã xử lý thì bỏ qua để tránh duplicate.
-- Chỉ ack event sau khi lưu kết quả thành công.
+**Công cụ:** Docker/Kubernetes, Kafka/RabbitMQ, monitoring.
 
-Các test cần nêu: input sai không tạo row/event; crash sau DB commit thì relay vẫn publish; duplicate chỉ tạo một kết quả; event lỗi nhiều lần đi vào DLQ.
-
-**Bản in:** một request hợp lệ, một request không hợp lệ, event và dữ liệu đã lưu.
+**In:** lệnh deploy, broker UI và trạng thái consumers.
 
 ---
 
-# 20. Event-Driven: observability logging và tracing
+## 19. Event-Driven — process nhập dữ liệu
 
-## Vẽ
+**Core:** chỉ dữ liệu hợp lệ mới được lưu và tạo event.
 
-```text
-Producer --event_id/correlation_id--> Kafka --> Consumer A --> Kafka --> Consumer B
-   |                                      |                         |
-   +--------------------------------------+-------------------------+
-                                  OpenTelemetry
-                         | logs | metrics | traces |
-                                  Grafana/Jaeger
-```
+**Vẽ:** `User → API → Validate → DB + Outbox → Broker → Consumer → Result DB`
 
-## Các bước
+**Kiểm tra đầu vào:** đúng schema, đủ field, đúng quyền và đúng business rule.
 
-1. Producer tạo `event_id`, `correlation_id` và trace context.
-2. Đưa các ID vào event/message header.
-3. Producer log lúc publish; consumer log lúc nhận, xử lý, retry hoặc đưa vào DLQ.
-4. Consumer tạo trace span khi xử lý.
-5. Thu metrics: event rate, processing time, consumer lag, retry count, DLQ size.
-6. Gửi dữ liệu đến OpenTelemetry Collector, Grafana và Jaeger.
-7. Chọn một correlation ID và tìm toàn bộ đường đi của event.
+- Sai: trả `400/403`, không lưu.
+- Đúng: lưu dữ liệu và outbox event trong cùng transaction, trả ID.
+- Consumer nhận event, xử lý và lưu kết quả.
+- Lỗi tạm thời thì retry; lỗi nhiều lần đưa vào DLQ.
+- Dùng `event_id` để không xử lý duplicate hai lần.
 
-```bash
-docker compose logs -f producer consumer-a consumer-b
-```
-
-**Bản in:** log theo correlation ID, trace trên Jaeger và dashboard consumer lag/DLQ.
+**In:** input đúng/sai, event và dữ liệu đã lưu.
 
 ---
 
-# 21. Kappa: đặc tính chất lượng và góc nhìn logic
+## 20. Event-Driven — logging và tracing
 
-> Câu hỏi cho chọn Lambda hoặc Kappa. Chọn **Kappa** và chỉ trình bày Kappa.
+**Core:** theo dõi một event từ producer qua broker đến mọi consumer.
 
-## Vẽ
+**Vẽ:** `Producer → Broker → Consumer`; cả ba → `OpenTelemetry → Logs/Jaeger/Grafana`.
 
-```text
-Ứng dụng/Data Sources
-        |
-       events
-        v
-Kafka durable event log
-        |
-Flink/Stream Processor
-        |
-Serving Database
-        |
-Report API -> Dashboard
+- Mỗi event có `event_id` và `correlation_id`.
+- Producer log khi publish.
+- Consumer log khi nhận, xử lý, retry hoặc đưa vào DLQ.
+- Metrics quan trọng: event rate, processing time, consumer lag, retry, DLQ size.
 
-Khi đổi logic:
-Kafka log --replay--> Processor v2 --> Serving DB v2
-```
+**Kiểm tra:** phát một event → tìm toàn bộ log/trace theo correlation ID.
 
-## Ghi và nói
-
-Kappa dùng một stream pipeline cho cả dữ liệu mới và việc tính lại. Muốn tính lại thì replay log.
-
-Đặc tính mong muốn:
-
-- Report cập nhật gần real time.
-- Scale bằng partitions và nhiều processor instances.
-- Processor chết có thể chạy lại từ checkpoint.
-- Replay log tạo lại serving data.
-- Có thể chạy logic v2 song song với v1.
-
-Cách kiểm tra:
-
-1. Tạo event có kết quả thống kê biết trước.
-2. Đo throughput, latency và consumer lag.
-3. Tăng partitions/processor rồi chạy lại.
-4. Tắt processor, bật lại và kiểm tra resume.
-5. Replay log vào DB mới rồi so count/kết quả.
-
-Công cụ: Kafka, Flink/Kafka Streams, PostgreSQL/ClickHouse, Prometheus/Grafana, Locust.
-
-**Bản in:** UI nhập dữ liệu, Kafka UI, source tree và dashboard lag.
+**In:** log, trace và dashboard consumer lag.
 
 ---
 
-# 22. Kappa: process view xuất báo cáo thống kê
+## 21. Kappa — chất lượng và logic
 
-## Vẽ
+**Core:** một stream pipeline xử lý dữ liệu mới; muốn tính lại thì replay event log qua cùng loại processor.
 
-```text
-Student trả lời câu hỏi
-        |
-AnswerSubmitted event
-        v
-Kafka -> Stream Processor
-             1. kiểm tra event
-             2. bỏ duplicate
-             3. tính total/correct theo ngày
-             4. lưu kết quả + checkpoint
-                        |
-                  Serving Database
-                        |
-User -> Report UI -> Report API -> query kết quả đã tính
-User <- bảng/biểu đồ + thời điểm cập nhật cuối
-```
+**Ví dụ:** đếm lượt click theo ngày.
 
-## Ghi và nói
+**Vẽ:** `Click Events → Kafka Log → Stream Processor → Report DB → Dashboard`
 
-- Input event: `event_id`, `user_id`, `correct`, `event_time`.
-- Processor cập nhật `total_answers`, `correct_answers`, `accuracy` theo ngày.
-- Report API nhận user, khoảng ngày và timezone; kiểm tra quyền rồi đọc dữ liệu đã tổng hợp.
-- Output là bảng/biểu đồ cùng `last_processed_at` để biết độ mới.
-- Duplicate event không được cộng hai lần.
-- Processor chết thì resume từ checkpoint.
-- Khi đổi công thức, replay Kafka log vào bảng v2, kiểm tra đúng rồi chuyển Report API sang bảng mới.
+Khi đổi logic: `Kafka Log → Processor v2 → Report DB v2`.
 
-**Bản in:** giao diện báo cáo, raw events trong Kafka và rows trong serving database.
+**Chất lượng:** gần real time, scale bằng partitions/processors, resume từ checkpoint, rebuild được bằng replay.
+
+**Kiểm tra:** tạo events có kết quả biết trước → đo latency/lag → tắt và bật processor → replay vào DB mới → so kết quả.
+
+**Công cụ:** Kafka, Flink/Kafka Streams, database, Grafana.
+
+**In:** giao diện nhập, raw events và dashboard.
 
 ---
 
-# Checklist trước khi thi
+## 22. Kappa — process xuất báo cáo
 
-Với câu bốc được, kiểm tra trên A4 đã có:
+**Core:** stream processor tính sẵn số liệu; Report API chỉ đọc kết quả.
 
-- [ ] Sơ đồ đúng loại view mà đề yêu cầu.
-- [ ] Tên và trách nhiệm của từng thành phần.
-- [ ] Nhãn trên mũi tên: REST, gRPC, event hoặc dữ liệu.
-- [ ] Công cụ đã sử dụng hoặc có thể sử dụng.
-- [ ] Các bước theo đúng thứ tự.
-- [ ] Input và output nếu là process view.
-- [ ] Metric/cách kiểm tra nếu hỏi quality attributes.
-- [ ] Danh sách bản in liên quan trực tiếp đến câu.
+**Vẽ:**
 
-Chỉ viết các ý trên; không tự mở rộng sang nội dung ngoài câu hỏi.
+`Click Event → Kafka → Processor → Report DB`
+
+`User → Report API → Report DB → Chart/Table`
+
+**Luồng:** event đến → kiểm tra duplicate → cộng số liệu theo ngày → lưu kết quả/checkpoint → API nhận khoảng ngày → đọc DB → trả báo cáo.
+
+Input báo cáo là user và khoảng ngày. Output là số click mỗi ngày cùng thời điểm cập nhật cuối.
+
+Processor chết thì chạy lại từ checkpoint; khi đổi công thức thì replay log vào bảng mới.
+
+**In:** giao diện báo cáo và dữ liệu thô của báo cáo.
+
+---
+
+## Cách học nhanh nhất
+
+Với mỗi câu, che tài liệu và tự làm ba việc:
+
+1. Nói được câu **Core**.
+2. Vẽ lại đúng một dòng **Vẽ**.
+3. Giải thích từng box và mũi tên trong 2–3 phút.
+
+Không học thêm ngoài những gì mình đã viết trên A4.
