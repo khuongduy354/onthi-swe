@@ -23,16 +23,12 @@
 ## Câu 1 — Microservices: chất lượng và triển khai
 
 - **Core:** chia hệ thống theo nghiệp vụ thành các service tự chủ, có thể phát triển, deploy và scale riêng.
-- **Đặc tính chất lượng:**
-  - **Performance:** p95 latency thấp, throughput cao, error rate trong ngưỡng.
-  - **Scalability:** thêm replica cho đúng service đang nghẽn.
-  - **Availability/resilience:** một pod chết, pod khác vẫn phục vụ.
-  - **Modifiability/deployability:** đổi một service mà không deploy toàn hệ thống.
-  - **Security/observability:** đúng quyền, mã hóa và truy vết được lỗi.
-- **Công cụ và cách kiểm tra:**
-  - JMeter/Locust/k6 tạo tải; Prometheus/Grafana đo latency, throughput, CPU và lỗi.
-  - Tắt một pod để đo failover; tăng replica rồi chạy lại cùng bài test.
-  - OWASP ZAP và test JWT kiểm tra bảo mật; Jaeger tìm request theo `trace_id`.
+- **Năm đặc tính — công cụ — cách đo:**
+  - **1. Performance — Công cụ:** JMeter/Locust/k6 + Prometheus/Grafana; **cách đo:** tạo cùng một mức tải, ghi p95 latency, request/giây và error rate.
+  - **2. Scalability — Công cụ:** Locust + `kubectl scale`/HPA; **cách đo:** chạy tải với 1 replica rồi 3 replica, so throughput, p95 và CPU; kết quả phải tốt hơn khi tăng replica.
+  - **3. Availability — Công cụ:** `kubectl delete pod` + Prometheus; **cách đo:** xóa một pod khi đang có tải, đếm request lỗi và thời gian hệ thống phục vụ lại.
+  - **4. Modifiability/deployability — Công cụ:** GitHub Actions + Kubernetes rollout; **cách đo:** đổi và deploy chỉ Search Service, kiểm tra service khác không build/deploy lại và downtime trong ngưỡng.
+  - **5. Security — Công cụ:** Postman/pytest + OWASP ZAP; **cách đo:** không token phải `401`, sai quyền phải `403`, đúng quyền `2xx`, không còn lỗ hổng mức nghiêm trọng sau khi quét.
 - **Deployment view:** `Browser → Nginx/Ingress → Kong Gateway → [Auth | Document | Search] pods → [PostgreSQL | Pinecone]`; `Document → Kafka → Index Worker pods`.
 - **Công cụ theo thành phần:** React/CDN cho Web; Nginx/Kong cho edge; FastAPI + Docker/Kubernetes cho service; Kafka cho broker; PostgreSQL/Pinecone cho dữ liệu; Kubernetes Secret/Vault cho secret.
 - **Các bước triển khai:** test/build → tạo image có version → push registry → deploy DB/broker → tạo secret/config → deploy API/worker/Ingress → chạy migration → kiểm tra health, log và E2E → rollback nếu lỗi.
@@ -105,11 +101,12 @@
 - **Core:** chia frontend theo domain thành các MFE do các nhóm phát triển/deploy độc lập; App Shell ghép chúng thành một ứng dụng.
 - **Logic view:** `Browser → App Shell → [Account MFE | Search MFE | Report MFE] → Backend API`; shared design system dùng chung.
 - **Công cụ:** React/Vue; React Router; Webpack Module Federation/import map; npm design-system package; Storybook, Vitest và Playwright.
-- **Đặc tính và kiểm tra:**
-  - Deployability: sửa/build/deploy riêng Search MFE; Shell/MFE khác không build lại.
-  - Fault isolation: chặn `remoteEntry.js`; Shell phải hiện fallback, route khác vẫn chạy.
-  - Performance: Lighthouse/Web Vitals và bundle analyzer đo LCP/INP/kích thước JS.
-  - Consistency/testability: Storybook visual test và E2E toàn Shell.
+- **Đặc tính — công cụ — cách đo:**
+  - **Deployability — Công cụ:** GitHub Actions/CDN; **cách đo:** sửa và deploy riêng Search MFE, kiểm tra pipeline và artifact của Shell/MFE khác không thay đổi.
+  - **Fault isolation — Công cụ:** Chrome DevTools/Playwright; **cách đo:** chặn `remoteEntry.js`, Search hiện fallback nhưng Shell và route khác vẫn dùng được.
+  - **Performance — Công cụ:** Lighthouse/Web Vitals + bundle analyzer; **cách đo:** ghi LCP, INP và kích thước JS của trang tổng hợp, so với budget đã đặt.
+  - **Consistency — Công cụ:** Storybook/visual regression; **cách đo:** so ảnh giao diện với baseline, số visual diff ngoài dự kiến phải bằng 0.
+  - **Testability — Công cụ:** Vitest/Storybook/Playwright; **cách đo:** component test từng MFE và E2E từ Shell đều pass, theo dõi coverage nếu nhóm có đặt ngưỡng.
 - **Cách kết hợp:** Shell tải remote runtime bằng Module Federation, đặt component vào route/layout, có loading/error boundary và khóa version dependency dùng chung.
 - **Cách giao tiếp:** props/callback cho quan hệ gần; URL/router cho navigation; event bus cho sự kiện đơn giản; backend là nguồn dữ liệu chung; tránh global mutable state lớn.
 - **Bản in:** giao diện từng MFE, Storybook và trang tổng hợp toàn hệ thống.
@@ -131,12 +128,12 @@
 - **Core:** JavaScript tạo tương tác, API cung cấp dữ liệu động, Markup được tạo trước khi build và phát từ CDN.
 - **Logic view:** `Git/Headless CMS → Next.js/Astro build → HTML/CSS/JS → CDN → Browser`; `Browser → Serverless/FastAPI` cho phần động.
 - **Công cụ:** Markdown/Contentful; Next.js/Astro; GitHub Actions; Netlify/Vercel/S3 + CloudFront; Lighthouse/k6.
-- **Đặc tính và kiểm tra:**
-  - Performance: Lighthouse/WebPageTest đo LCP/TTFB và cache header.
-  - Scalability: k6/Locust load test URL CDN.
-  - Availability: tắt API, phần tĩnh vẫn mở và phần động có fallback.
-  - Security: quét ZAP, kiểm tra không có secret trong bundle; API vẫn authn/authz.
-  - Deployability/freshness: đổi content → build/publish → kiểm tra nội dung → rollback deployment cũ.
+- **Đặc tính — công cụ — cách đo:**
+  - **Performance — Công cụ:** Lighthouse/WebPageTest; **cách đo:** ghi LCP, TTFB, tổng kích thước tải và cache hit/header của trang từ CDN.
+  - **Scalability — Công cụ:** k6/Locust + dashboard CDN; **cách đo:** tăng virtual users, ghi request/giây, p95 và error rate trong khi không tăng origin server.
+  - **Availability — Công cụ:** curl/Playwright + uptime monitor; **cách đo:** tắt API/origin, trang tĩnh vẫn trả `200` và phần động hiển thị fallback.
+  - **Security — Công cụ:** OWASP ZAP + secret scanner; **cách đo:** số lỗi nghiêm trọng bằng 0, bundle không chứa API key, API vẫn trả `401/403` khi sai quyền.
+  - **Deployability/freshness — Công cụ:** GitHub Actions + Netlify/Vercel; **cách đo:** đổi content, ghi thời gian commit-to-live, xác nhận nội dung mới và thử rollback về deployment trước.
 - **Cây source:** `src/pages/`, `src/components/`, `content/`, `public/`, `src/api/`, file cấu hình build.
 - **Bản in:** giao diện; cây thư mục; log/kết quả `npm run build`.
 
@@ -148,13 +145,13 @@
 - **Indexing view:** `Documents → Loader/Clean → Chunk → Embedding API → Pinecone/FAISS`.
 - **Query view:** `Question → Query embedding → top-k + ACL filter → Prompt(question + chunks) → LLM → Answer + citations`.
 - **Công cụ:** LangChain/LlamaIndex/Python cho loader/chunker; embedding/LLM API; Pinecone/FAISS; FastAPI Query API; React UI.
-- **Đặc tính và kiểm tra:**
-  - Retrieval relevance: bộ câu hỏi gán nhãn; đo Hit-rate/Recall@k/MRR và xem top-k.
-  - Correctness/faithfulness: so đáp án chuẩn; hỏi ngoài tài liệu thì phải từ chối/ghi không đủ dữ kiện.
-  - Citation: mở từng nguồn và đối chiếu đúng đoạn hỗ trợ.
-  - Performance: Locust/k6 đo p95 retrieval và end-to-end latency.
-  - Freshness/reliability: thêm/sửa/xóa tài liệu; kiểm tra re-index, retry và không trùng vector.
-  - Security: user A không retrieve chunk của user B; ACL phải lọc trước khi gửi context cho LLM.
+- **Đặc tính — công cụ — cách đo:**
+  - **Retrieval relevance — Công cụ:** bộ câu hỏi/chunk gán nhãn + script eval; **cách đo:** tính Hit-rate/Recall@k/MRR và kiểm tra relevant chunk có trong top-k.
+  - **Correctness/faithfulness — Công cụ:** đáp án chuẩn + RAGAS/LLM judge và kiểm tra tay; **cách đo:** tỷ lệ câu đúng/có căn cứ, câu ngoài tài liệu phải từ chối thay vì bịa.
+  - **Citation correctness — Công cụ:** citation checker/pytest; **cách đo:** mở từng citation, tính tỷ lệ nguồn thật sự chứa đoạn hỗ trợ câu trả lời.
+  - **Performance — Công cụ:** Locust/k6 + OpenTelemetry; **cách đo:** p95 retrieval latency, LLM latency, end-to-end latency và error rate.
+  - **Freshness/reliability — Công cụ:** worker logs + Pinecone UI; **cách đo:** thời gian từ lúc thêm/sửa/xóa tài liệu đến lúc truy vấn thấy thay đổi; job lỗi phải retry và không tạo vector trùng.
+  - **Security — Công cụ:** pytest/Postman với hai tài khoản; **cách đo:** số chunk của tenant B xuất hiện trong kết quả tenant A phải bằng 0.
 - **Cây source:** `web/`, `query_api/`, `indexing/`, `shared/schemas/`, `tests/`, `deploy/`.
 - **Bản in:** giao diện hỏi đáp/citation; top-k hoặc vector metadata; cây source.
 
@@ -175,13 +172,13 @@
 - **Core:** agent lặp `quan sát trạng thái → LLM chọn hành động/tool → chạy tool → đọc kết quả` đến khi hoàn thành hoặc chạm giới hạn.
 - **Logic view:** `User → Chat UI → Agent Orchestrator ↔ LLM`; `Orchestrator → Permission Check → Tool Registry → Tool Result`; Memory/Checkpoint/Audit nối với Orchestrator.
 - **Công cụ:** React; LangGraph/custom Python; JSON Schema/Pydantic cho tool; PostgreSQL/Redis cho state; OpenTelemetry cho audit/trace; LLM API.
-- **Đặc tính và kiểm tra:**
-  - Correctness: bộ task có kết quả/tool sequence mong đợi; đo task success.
-  - Safety/security: thử user thiếu quyền, prompt injection và write tool; policy phải chặn/đòi approval.
-  - Bounded execution/cost: task tạo loop phải dừng ở `max_steps`, timeout hoặc budget.
-  - Reliability: mock tool timeout/5xx; kiểm tra retry, checkpoint/resume và không lặp side effect.
-  - Observability: mỗi model/tool call có trace, latency/token/cost và dữ liệu nhạy cảm đã che.
-  - Modifiability: thêm Calculator theo cùng tool interface mà không sửa core loop.
+- **Đặc tính — công cụ — cách đo:**
+  - **Correctness — Công cụ:** bộ task chuẩn + pytest/eval harness; **cách đo:** task success rate và tỷ lệ tool sequence/kết quả đúng mong đợi.
+  - **Safety/security — Công cụ:** red-team prompts + policy tests; **cách đo:** request thiếu quyền/prompt injection/write tool bị chặn hoặc yêu cầu approval, số lần truy cập trái phép bằng 0.
+  - **Bounded execution/cost — Công cụ:** telemetry của LLM + cấu hình agent; **cách đo:** task cố tạo loop phải dừng ở `max_steps`, timeout hoặc token/cost budget.
+  - **Reliability — Công cụ:** mock server + workflow/checkpoint DB; **cách đo:** tool trả timeout/5xx phải retry/resume đúng, side effect chỉ xảy ra một lần.
+  - **Observability — Công cụ:** OpenTelemetry/Jaeger; **cách đo:** mỗi model/tool call có span, latency, token và cost; log không lộ secret.
+  - **Modifiability — Công cụ:** contract test cho tool schema; **cách đo:** thêm Calculator và chạy test thành công mà không sửa core agent loop.
 - **Cây source:** `web/`, `agent/`, `tools/`, `policy/`, `storage/`, `tests/`, `deploy/`.
 - **Bản in:** giao diện agent; cây source; một run/tool call thành công và thất bại.
 
@@ -202,12 +199,12 @@
 - **Logic view:** `UI → Command API → Aggregate/rules → Event Store → Projector → Read Model ← Query API ← UI`.
 - **Công cụ:** React; FastAPI; EventStoreDB/PostgreSQL append-only; Python projector; PostgreSQL Read Model; pytest/Locust.
 - **Ví dụ:** `score=0 → QuizAnswered(+10) → AnswerCorrected(-2) → score=8`.
-- **Đặc tính và kiểm tra:**
-  - Auditability: xem event có actor/time/type/payload; ứng dụng không được sửa/xóa.
-  - Recoverability: xóa read model, replay và so count/state/hash trước-sau.
-  - Extensibility: tạo projector/report mới từ event cũ.
-  - Performance: đo append latency/throughput, query latency và projection lag.
-  - Consistency: gửi duplicate; kiểm tra idempotency; concurrent command sai `expected_version` phải bị từ chối.
+- **Đặc tính — công cụ — cách đo:**
+  - **Auditability — Công cụ:** EventStoreDB UI/SQL; **cách đo:** mỗi thay đổi có event gồm actor/time/type/payload, role ứng dụng không thể `UPDATE/DELETE` event.
+  - **Recoverability — Công cụ:** projector rebuild script + DB query; **cách đo:** xóa Read Model rồi replay, count/state/hash sau rebuild phải bằng trước đó.
+  - **Extensibility — Công cụ:** projector framework + integration test; **cách đo:** tạo report/projection mới từ event cũ mà Command API và event history không đổi.
+  - **Performance — Công cụ:** Locust/k6 + Prometheus; **cách đo:** append p95/throughput, query p95 và projection lag dưới ngưỡng bài thực hành.
+  - **Consistency/reliability — Công cụ:** pytest concurrent/duplicate tests; **cách đo:** duplicate chỉ tạo một kết quả, hai command cùng version thì một command bị từ chối bởi `expected_version`.
 - **Luồng:** Command API nạp stream → Aggregate kiểm rule → append event với version → Projector cập nhật Read Model idempotently → Query API đọc model.
 - **Cây source:** `command_api/`, `domain/`, `projections/`, `query_api/`, `migrations/`, `tests/`, `deploy/`.
 - **Bản in:** giao diện nhập; event rows/EventStoreDB UI; cây source.
@@ -259,13 +256,13 @@
 - **Core:** producer phát sự kiện đã xảy ra; broker giữ/chuyển event; các consumer độc lập đăng ký và xử lý.
 - **Logic view:** `Upload UI → Document API → PostgreSQL + Outbox → Kafka → [Extractor | Audit | Notification]`; `Extractor → TextExtracted → Kafka → Indexer → Pinecone`.
 - **Công cụ:** React; FastAPI/Node; PostgreSQL; Kafka/RabbitMQ; Python consumers; JSON Schema/Avro; OpenTelemetry/Grafana.
-- **Đặc tính và kiểm tra:**
-  - Loose coupling: thêm Audit Consumer mà producer source/build không đổi.
-  - Scalability: tạo tải, đo events/s và lag; tăng partition + consumer rồi đo lại.
-  - Availability/durability: tắt consumer, phát event, bật lại; broker vẫn giữ và xử lý tiếp.
-  - Reliability: thử retry/backoff, outbox và DLQ khi lỗi.
-  - Idempotency: gửi cùng `event_id` hai lần; kết quả chỉ đổi một lần.
-  - Observability: lần theo toàn luồng bằng `correlation_id`; dashboard có lag/retry/DLQ.
+- **Đặc tính — công cụ — cách đo:**
+  - **Loose coupling — Công cụ:** Git diff/CI + contract test; **cách đo:** thêm Audit Consumer, producer source/build không đổi và event contract vẫn pass.
+  - **Scalability/performance — Công cụ:** Locust/k6 + Kafka/Grafana; **cách đo:** events/giây và consumer lag trước/sau khi tăng partition + consumer.
+  - **Availability/durability — Công cụ:** Docker/Kubernetes + Kafka UI; **cách đo:** tắt consumer, phát event, bật lại; toàn bộ event tồn đọng phải được xử lý.
+  - **Reliability — Công cụ:** fault injection + outbox/DLQ dashboard; **cách đo:** crash sau DB commit không làm mất event, lỗi tạm thời được retry, lỗi vĩnh viễn vào DLQ.
+  - **Idempotency/consistency — Công cụ:** pytest/Postman + DB query; **cách đo:** gửi cùng `event_id` hai lần nhưng business result chỉ thay đổi một lần.
+  - **Observability — Công cụ:** OpenTelemetry/Jaeger/Grafana; **cách đo:** tìm đủ producer và consumer spans theo `correlation_id`, dashboard hiển thị lag/retry/DLQ.
 - **Cây source:** `producer_api/`, `outbox_relay/`, `consumers/`, `contracts/`, `tests/`, `deploy/`.
 - **Bản in:** giao diện nhập; broker/topic UI; cây source.
 
@@ -315,13 +312,13 @@
 - **Core:** chỉ có một stream pipeline cho dữ liệu mới và việc tính lại; khi đổi logic thì replay durable event log.
 - **Logic view:** `React/FastAPI → Kafka event log → Flink/Kafka Streams → PostgreSQL/ClickHouse Serving DB → Report API → Dashboard`; logic mới: `Kafka → Processor v2 → Serving DB v2`.
 - **Công cụ:** Kafka; Flink/Kafka Streams; PostgreSQL/ClickHouse; FastAPI/React/Grafana; Prometheus/Locust.
-- **Đặc tính và kiểm tra:**
-  - Near real time: đo event-time → serving-time latency, throughput và lag.
-  - Scalability: tăng Kafka partition và processor parallelism; chạy lại cùng tải.
-  - Fault tolerance: kill/restart processor; resume từ checkpoint, không mất/trùng kết quả.
-  - Replay/recovery: consumer group mới replay vào DB v2; so count/sum/hash.
-  - Evolvability: chạy v1/v2 song song, so output rồi chuyển Report API.
-  - Correctness: event biết trước, duplicate/out-of-order; kiểm aggregate/window cuối.
+- **Đặc tính — công cụ — cách đo:**
+  - **Near real time — Công cụ:** Kafka/Flink metrics + Prometheus; **cách đo:** event-time đến serving-time latency, throughput và consumer lag.
+  - **Scalability — Công cụ:** Locust + Kafka partition/Flink parallelism; **cách đo:** chạy cùng tải trước/sau khi tăng parallelism, so events/giây và lag.
+  - **Fault tolerance — Công cụ:** Docker/Kubernetes + Flink checkpoint; **cách đo:** kill/restart processor, kết quả phải tiếp tục từ checkpoint và không mất/trùng.
+  - **Replay/recovery — Công cụ:** Kafka consumer group mới + SQL; **cách đo:** replay vào DB v2, count/sum/hash phải khớp kết quả chuẩn.
+  - **Evolvability — Công cụ:** processor v1/v2 + comparison script; **cách đo:** chạy song song từ cùng log, so output rồi mới chuyển Report API.
+  - **Correctness — Công cụ:** tập raw events chuẩn + integration test; **cách đo:** aggregate/window cuối đúng với event bình thường, duplicate và out-of-order.
 - **Khác Lambda:** Kappa không có batch layer riêng nên ít pipeline hơn; phải giữ event log đủ lâu để replay.
 - **Cây source:** `producer/`, `contracts/`, `stream_processor/`, `report_api/`, `tests/`, `deploy/`.
 - **Bản in:** giao diện nhập; Kafka UI; cây source; dashboard latency/lag.
