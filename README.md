@@ -1,5 +1,7 @@
 # Kiến trúc phần mềm — core của đúng 22 câu
 
+[Mở PDF 22 câu hỏi gốc](materials/22-cau-hoi-thi-kien-truc-phan-mem.pdf)
+
 Mỗi câu chỉ học ba thứ:
 
 1. **Core:** ý chính của kiến trúc.
