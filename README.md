@@ -6,6 +6,24 @@ Mỗi câu chỉ học ba thứ:
 2. **Vẽ:** sơ đồ tối giản.
 3. **Nói:** giải thích các box và mũi tên theo thứ tự.
 
+## Từ vựng tối thiểu cho người bắt đầu từ số 0
+
+- **Client/Frontend:** giao diện người dùng nhìn thấy, ví dụ trang web.
+- **Backend/Service:** chương trình phía máy chủ thực hiện một nhóm chức năng.
+- **API:** “cửa giao tiếp” để hai chương trình gửi yêu cầu và kết quả cho nhau.
+- **Database:** nơi lưu dữ liệu lâu dài.
+- **Request/response:** client gửi yêu cầu; server xử lý rồi trả kết quả.
+- **Event:** thông báo rằng một việc **đã xảy ra**, ví dụ `OrderCreated`.
+- **Message broker:** trạm trung chuyển event, ví dụ Kafka hoặc RabbitMQ.
+- **Worker:** chương trình chạy nền để xử lý công việc.
+- **Container/Docker:** gói chương trình cùng môi trường cần để chạy.
+- **Replica:** một bản sao đang chạy của service. Nhiều replica cùng chia tải.
+- **Load balancer:** phân request cho các replica.
+- **Latency:** một request mất bao lâu. **Throughput:** xử lý được bao nhiêu request trong một khoảng thời gian.
+- **Deploy:** đưa phần mềm lên môi trường để người dùng có thể sử dụng.
+- **Scale:** tăng khả năng phục vụ khi tải tăng, thường bằng cách thêm replica.
+- **Log:** dòng ghi lại một việc đã xảy ra. **Trace:** toàn bộ hành trình của một request qua hệ thống.
+
 ## Các góc nhìn — nhớ một lần
 
 - **Logic view:** hệ thống có những thành phần nào và mỗi thành phần làm gì.
@@ -20,7 +38,9 @@ Mỗi câu chỉ học ba thứ:
 
 ## 1. Microservices — chất lượng và deployment
 
-**Core:** Chia hệ thống thành các service nhỏ, mỗi service có thể phát triển, deploy và scale độc lập.
+**Microservices là gì?** Thay vì viết toàn bộ hệ thống thành một chương trình lớn, ta chia nó thành nhiều chương trình nhỏ theo chức năng. Ví dụ cửa hàng có Order Service lo đơn hàng và Payment Service lo thanh toán. Mỗi service chạy riêng và nói chuyện qua mạng.
+
+**Core:** Mỗi service có thể phát triển, deploy và scale tương đối độc lập.
 
 **Vẽ:** `User → Load Balancer → API Gateway → [Order Service | Payment Service] → Database`
 
@@ -129,7 +149,9 @@ tests/
 
 ## 6. Micro-Frontends — chất lượng, logic, kết hợp và giao tiếp
 
-**Core:** Chia frontend lớn thành các phần giao diện độc lập theo chức năng.
+**Micro-Frontend là gì?** Đây là ý tưởng Microservices áp dụng cho giao diện web: chia một frontend lớn thành nhiều phần nhỏ. Ví dụ Product MFE hiển thị sản phẩm, Cart MFE hiển thị giỏ hàng. App Shell ghép các phần đó thành một trang hoàn chỉnh.
+
+**Core:** Mỗi phần giao diện có thể được một nhóm phát triển và deploy riêng.
 
 **Vẽ:** `App Shell → [Product MFE | Cart MFE | Account MFE] → Backend API`
 
@@ -168,7 +190,15 @@ tests/
 
 ## 8. JAMstack — chất lượng và logic
 
-**Core:** tạo HTML trước lúc build và phát file tĩnh từ CDN; JavaScript gọi API cho phần động.
+**JAMstack là gì?** JAM là **JavaScript, APIs, Markup**:
+
+- **Markup:** HTML được tạo sẵn khi build, không đợi người dùng mở trang mới tạo.
+- **JavaScript:** làm trang có tương tác.
+- **APIs:** cung cấp dữ liệu động như đăng nhập hoặc bình luận.
+
+File đã tạo sẵn được đặt trên **CDN**, tức nhiều máy chủ phân phối nội dung ở gần người dùng. Vì server chủ yếu chỉ gửi file có sẵn nên trang thường nhanh và dễ chịu tải.
+
+**Core:** tạo HTML trước lúc build, phát file tĩnh từ CDN, và chỉ gọi API cho phần động.
 
 **Ví dụ:** blog tĩnh.
 
@@ -186,7 +216,11 @@ tests/
 
 ## 9. RAG — chất lượng và logic
 
-**Core:** tìm các đoạn tài liệu liên quan rồi đưa chúng cho LLM để trả lời.
+**RAG là gì?** RAG là **Retrieval-Augmented Generation**. LLM vốn không biết tài liệu riêng của ta. Vì vậy hệ thống tìm các đoạn tài liệu liên quan đến câu hỏi, đặt chúng vào prompt, rồi mới yêu cầu LLM trả lời.
+
+**Embedding** biến một đoạn chữ thành dãy số biểu diễn ý nghĩa. **Vector database** lưu các dãy số này để tìm những đoạn có ý nghĩa gần với câu hỏi.
+
+**Core:** tìm đúng các đoạn tài liệu liên quan rồi đưa chúng cho LLM để trả lời có căn cứ.
 
 **Vẽ indexing:** `Documents → Chunking → Embedding → Vector DB`
 
@@ -224,7 +258,9 @@ tests/
 
 ## 11. LLM-based Agent — chất lượng và logic
 
-**Core:** Agent dùng LLM để chọn và gọi tool nhằm hoàn thành một mục tiêu.
+**LLM-based Agent là gì?** Chatbot thường chỉ trả lời bằng văn bản. Agent còn có thể quyết định gọi một công cụ, đọc kết quả rồi làm bước tiếp theo. Tool có thể là calculator, tìm kiếm hoặc API.
+
+**Core:** Agent lặp lại quá trình “xem tình trạng → chọn hành động/tool → nhận kết quả” cho đến khi hoàn thành mục tiêu hoặc phải dừng.
 
 **Vẽ:** `User → Agent → LLM → chọn Tool → Tool Result → Agent → Answer`
 
@@ -256,7 +292,9 @@ tests/
 
 ## 13. Event Sourcing — chất lượng và logic
 
-**Core:** lưu chuỗi sự kiện bất biến thay vì chỉ lưu trạng thái cuối.
+**Event Sourcing là gì?** Cách lưu thông thường chỉ giữ trạng thái hiện tại, ví dụ số dư là 70. Event Sourcing giữ toàn bộ những việc đã dẫn đến trạng thái đó: nạp 100 rồi rút 30. Các event cũ không bị sửa; muốn biết trạng thái hiện tại thì áp dụng chúng theo thứ tự.
+
+**Core:** chuỗi event là dữ liệu gốc; trạng thái hiện tại được tính lại từ chuỗi đó.
 
 **Ví dụ tài khoản ngân hàng:**
 
@@ -330,7 +368,11 @@ Input là user, filter và page. Output là danh sách cùng tổng số dòng.
 
 ## 17. Event-Driven — chất lượng và logic
 
-**Core:** Producer phát event; broker chuyển event; consumers tự phản ứng. Producer không cần biết consumer nào tồn tại.
+**Event-Driven Architecture là gì?** Một thành phần thông báo rằng một việc đã xảy ra. Các thành phần quan tâm sẽ tự phản ứng. Ví dụ Order Service phát `OrderCreated`; Email Consumer gửi email và Inventory Consumer trừ tồn kho.
+
+**Producer** tạo event, **broker** trung chuyển, **consumer** nhận và xử lý event.
+
+**Core:** producer không gọi trực tiếp từng consumer, nên có thể thêm consumer mới mà ít sửa producer.
 
 **Ví dụ:** `Order Service --OrderCreated→ Kafka → [Email Consumer | Inventory Consumer]`
 
@@ -395,7 +437,17 @@ Input là user, filter và page. Output là danh sách cùng tổng số dòng.
 
 ## 21. Kappa — chất lượng và logic
 
-**Core:** một stream pipeline xử lý dữ liệu mới; muốn tính lại thì replay event log qua cùng loại processor.
+**Kappa Architecture là gì?** Đây là kiến trúc xử lý một dòng dữ liệu liên tục:
+
+- **Stream:** dòng event đến liên tục, ví dụ từng lượt click.
+- **Event log:** Kafka lưu các event theo thứ tự trong một khoảng thời gian.
+- **Stream processor:** đọc từng event và cập nhật kết quả, ví dụ cộng số click mỗi ngày.
+- **Serving/Report DB:** lưu kết quả đã tính để giao diện đọc nhanh.
+- **Replay:** đọc lại event cũ từ đầu để tính lại kết quả.
+
+Kappa chỉ dùng một kiểu xử lý stream. Khi công thức thay đổi, ta chạy processor mới và cho nó replay event log để tạo bảng kết quả mới.
+
+**Core:** một stream pipeline xử lý dữ liệu mới; muốn tính lại thì replay event log qua processor.
 
 **Ví dụ:** đếm lượt click theo ngày.
 
