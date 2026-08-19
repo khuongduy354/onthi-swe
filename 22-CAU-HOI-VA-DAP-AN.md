@@ -72,7 +72,7 @@ kubectl apply -Rf hotelReservation/kubernetes/
 kubectl get pods,svc
 ```
 
-- **Bản in:** kết quả `wrk2`, trạng thái container/pod và lệnh deploy.
+- **Bản in đúng theo đề:** một số giao diện/câu lệnh dùng để kiểm tra chất lượng và một số câu lệnh triển khai. Đề **không bắt buộc** in kết quả load test.
 
 ---
 
@@ -118,7 +118,7 @@ flowchart LR
 ```
 
 - **Input:** ngày, hotel ID, số phòng và tài khoản. **Output:** đặt phòng thành công/thất bại.
-- **Bản in:** cây `services/`, lệnh build và request/response đặt phòng.
+- **Bản in đúng theo đề:** một số câu lệnh cần thiết để cài đặt mã nguồn.
 
 ---
 
@@ -166,7 +166,7 @@ TLS=1 docker compose up -d
 kubectl scale deployment hotel-reserv-search --replicas=3
 ```
 
-- **Bản in:** cấu hình TLS, lệnh scale và số pod trước/sau.
+- **Bản in đúng theo đề:** các câu lệnh thiết lập và thực hiện scaling; đề không yêu cầu in benchmark sau khi scale.
 
 ---
 
@@ -196,6 +196,21 @@ flowchart LR
 - **Cách làm:** đặt `JAEGER_SAMPLE_RATIO` và `LOG_LEVEL` → gửi search request → mở Jaeger xem Frontend → Search → Geo/Rate → đối chiếu service logs.
 - **Không log:** password, token và dữ liệu nhạy cảm.
 - **Bản in:** `docker compose logs <service>` và một trace trên Jaeger.
+
+### Cách chạy demo thật cho câu 4
+
+Demo dùng chung nằm trong thư mục `observability-demo`. Phần Microservices là `Gateway → Reservation Service`; OpenTelemetry gửi spans sang Jaeger.
+
+```bash
+cd observability-demo
+docker compose up --build -d
+curl http://localhost:8081/availability
+docker compose logs --no-log-prefix gateway reservation
+```
+
+Mở `http://localhost:16686` → chọn `gateway-service` → **Find Traces** → mở `GET /availability`. Bản in cần lấy: câu lệnh trên và ảnh trace có `gateway-service → reservation-service`.
+
+![Câu 4 - Jaeger trace qua hai microservice](observability-demo/screenshots/cau-04-jaeger-trace.png)
 
 ---
 
@@ -242,7 +257,7 @@ flowchart TB
 ```
 
 - MongoDB lưu dữ liệu bền vững; Memcached cache dữ liệu đọc thường xuyên để giảm latency.
-- **Bản in:** cây thư mục, sơ đồ storage và lệnh build/test service mới.
+- **Bản in đúng theo đề:** một số câu lệnh cần thiết để cài đặt thêm một thành phần mới.
 
 ---
 
@@ -294,7 +309,7 @@ flowchart TB
 - **Deployment view:** `Repo MFE → CI build → CDN`; `Browser --HTTPS→ Shell/CDN → remoteEntry.js --HTTPS→ Backend API`.
 - **Công cụ:** GitHub Actions, npm/Vite/Webpack, Module Federation và Netlify/Vercel/CDN.
 - **Các bước:** test/build từng MFE → upload artifact có version → cập nhật manifest của Shell → E2E → phát hành → rollback manifest nếu lỗi.
-- **Bản in:** lệnh build/upload, CI log và giao diện sau deploy.
+- **Bản in đúng theo đề:** một số câu lệnh cần thiết để triển khai hệ thống.
 
 ---
 
@@ -319,7 +334,7 @@ flowchart TB
 - **Security — Công cụ:** OWASP ZAP/secret scanner; **cách đo:** không có lỗi nghiêm trọng hoặc secret trong bundle.
 - **Deployability — Công cụ:** GitHub Actions/Netlify; **cách đo:** thời gian từ commit đến trang mới và khả năng rollback.
 - **Logic view:** `Git/CMS → Next.js/Astro build → HTML/CSS/JS → CDN → Browser → API`.
-- **Bản in:** giao diện, cây source và kết quả build.
+- **Bản in đúng theo đề:** giao diện hệ thống và cây thư mục mã nguồn.
 
 ---
 
@@ -349,7 +364,7 @@ flowchart TB
 - **Security — Công cụ:** test bằng hai tài khoản; **cách đo:** user A không lấy được chunk của user B.
 - **Logic view:** `Documents → Chunk → Embedding → Vector DB`; `Question → Retrieve top-k → Prompt → LLM → Answer + citation`.
 - **Công cụ cài đặt:** Python/LangChain, embedding/LLM API, Pinecone/FAISS, FastAPI và React.
-- **Bản in:** giao diện hỏi đáp, citation/top-k và cây source.
+- **Bản in đúng theo đề:** giao diện hệ thống và cây thư mục mã nguồn.
 
 ---
 
@@ -368,7 +383,7 @@ flowchart TB
 - **Deployment view:** `Browser --HTTPS→ Web --REST→ Query API --HTTPS→ [Vector DB | Embedding API | LLM API]`; `Documents → Worker → Vector DB`.
 - **Công cụ:** Docker/Kubernetes, Kafka/queue, Pinecone, LLM API và Kubernetes Secret.
 - **Các bước:** tạo vector index → cấu hình secret → build/deploy worker → index dữ liệu mẫu → deploy Query API/Web → hỏi thử và kiểm tra citation/log.
-- **Bản in:** lệnh deploy, trạng thái container/pod, vector DB UI và giao diện query.
+- **Bản in đúng theo đề:** một số câu lệnh cần thiết **hoặc** giao diện công cụ trực tuyến dùng để triển khai.
 
 ---
 
@@ -394,7 +409,7 @@ flowchart TB
 - **Modifiability — Công cụ:** contract test; **cách đo:** thêm tool mới mà không sửa core loop.
 - **Logic view:** `User → Agent → LLM → Permission Check → Tool → Result → Answer`; Memory/Checkpoint lưu trạng thái.
 - **Công cụ cài đặt:** LangGraph/custom Python, LLM API, Pydantic tool schema, PostgreSQL/Redis và OpenTelemetry.
-- **Bản in:** giao diện, cây source và một tool call.
+- **Bản in đúng theo đề:** giao diện hệ thống và cây thư mục mã nguồn.
 
 ---
 
@@ -413,7 +428,7 @@ flowchart TB
 - **Deployment view:** `Client --HTTPS→ Gateway/Auth --REST→ Agent API → Queue → Worker --HTTPS→ [LLM | Tools]`; Worker → Checkpoint DB/Secrets/Logs.
 - **Công cụ:** FastAPI, Docker/Kubernetes, Temporal/Kafka, PostgreSQL, Vault/Secret và OpenTelemetry.
 - **Các bước:** định nghĩa tool/quyền → lưu secret → build/deploy API/worker/queue/DB → đặt max steps/timeout/retry → test staging → theo dõi rồi mở rộng.
-- **Bản in:** lệnh/status deploy và trace một agent run.
+- **Bản in đúng theo đề:** một số câu lệnh cần thiết **hoặc** giao diện công cụ trực tuyến dùng để triển khai.
 
 ---
 
@@ -443,7 +458,7 @@ flowchart TB
 - **Consistency — Công cụ:** pytest; **cách đo:** duplicate chỉ xử lý một lần, sai `expected_version` bị từ chối.
 - **Logic view:** `Command API → Aggregate → Event Store → Projector → Read Model ← Query API`.
 - **Công cụ cài đặt:** FastAPI, EventStoreDB/PostgreSQL và Python projector.
-- **Bản in:** giao diện nhập, event rows và cây source.
+- **Bản in đúng theo đề:** giao diện nhập dữ liệu và cây thư mục mã nguồn.
 
 ---
 
@@ -462,7 +477,7 @@ flowchart TB
 - **Deployment view:** `Command API container --append→ Event Store`; `Event Store --subscription→ Projector container --SQL→ Read DB`; `Query API container --SQL→ Read DB`.
 - **Công cụ:** Docker/Kubernetes, EventStoreDB/PostgreSQL, volume/backup và OpenTelemetry.
 - **Các bước:** deploy Event Store → tạo schema → deploy Command API → deploy Read DB/Projector → replay → deploy Query API → kiểm tra end-to-end.
-- **Bản in:** lệnh deploy, Event Store UI và log projector.
+- **Bản in đúng theo đề:** một số câu lệnh cần thiết **hoặc** giao diện công cụ trực tuyến dùng để triển khai.
 
 ---
 
@@ -517,6 +532,7 @@ flowchart LR
 - **Tái tạo:** bắt đầu state rỗng/snapshot → đọc events đúng version → áp dụng tuần tự → nhận state cuối.
 - **Rebuild Read Model:** tạo bảng mới → replay toàn bộ → so count/state → chuyển Query API sang bảng mới.
 - **Công cụ tái tạo:** Event Store client, projector/rebuild script và DB viewer.
+- **Bản in:** đề không ghi yêu cầu nộp kèm riêng cho câu 16.
 
 ---
 
@@ -546,7 +562,7 @@ flowchart LR
 - **Idempotency — Công cụ:** pytest/DB query; **cách đo:** cùng `event_id` hai lần nhưng kết quả chỉ đổi một lần.
 - **Logic view:** `Producer API → Kafka → [Consumer A | Consumer B] → Databases`.
 - **Công cụ cài đặt:** FastAPI, Kafka/RabbitMQ, Python consumer và PostgreSQL.
-- **Bản in:** giao diện nhập, broker UI và cây source.
+- **Bản in đúng theo đề:** giao diện nhập dữ liệu và cây thư mục mã nguồn.
 
 ---
 
@@ -565,7 +581,7 @@ flowchart LR
 - **Deployment view:** `Client --HTTPS→ Producer API container --SQL→ PostgreSQL/Outbox --event→ Kafka → Consumer containers --SQL→ Databases`.
 - **Công cụ:** Docker/Kubernetes, PostgreSQL, Kafka/RabbitMQ và Grafana.
 - **Các bước:** deploy broker/topic → deploy DB/consumers → deploy producer → gửi event test → kiểm tra kết quả/lag → scale consumer nếu cần.
-- **Bản in:** lệnh deploy, broker UI và trạng thái consumers.
+- **Bản in đúng theo đề:** một số câu lệnh cần thiết **hoặc** giao diện công cụ trực tuyến dùng để triển khai.
 
 ---
 
@@ -602,6 +618,7 @@ flowchart LR
 - **Input sai:** trả `400/401/403/422`, không lưu.
 - **Input đúng:** ghi business data + outbox trong một transaction → commit → trả ID → relay publish event.
 - **Consumer:** kiểm schema/duplicate → xử lý → lưu kết quả → lỗi thì retry/DLQ.
+- **Bản in:** đề không ghi yêu cầu nộp kèm riêng cho câu 19.
 
 ---
 
@@ -624,6 +641,28 @@ flowchart LR
 - **Các bước:** tạo `event_id/correlation_id` → đặt vào header → log lúc publish/consume/retry/DLQ → tạo spans → thu lag/error/DLQ metrics → hiển thị và cảnh báo.
 - **Kiểm tra:** phát một event, tìm toàn bộ log/trace theo correlation ID và xem dashboard lag.
 - **Bản in:** lệnh xem log, trace và dashboard.
+
+### Cách chạy demo thật cho câu 20
+
+Demo dùng `Reservation Service → Redpanda (Kafka-compatible) → Notification Consumer`. `traceparent` đi trong event header; `eventId` đi trong payload và log.
+
+```bash
+cd observability-demo
+docker compose up --build -d
+curl -X POST http://localhost:8081/book \
+  -H 'Content-Type: application/json' \
+  -d '{"hotelId":"hotel-01","userId":"user-01"}'
+docker compose logs --no-log-prefix gateway reservation consumer
+docker compose ps
+```
+
+- Jaeger: `http://localhost:16686` → trace có đủ `POST /book → reservation.create → notification.handle`.
+- Dữ liệu event thô: `http://localhost:8080/topics/reservation-events`.
+- Bản in: các lệnh trên, ảnh Jaeger và ảnh topic chứa event thô. Tìm cùng một `eventId` trong producer/consumer logs để giải thích correlation.
+
+![Câu 20 - Jaeger trace từ producer đến consumer](observability-demo/screenshots/cau-20-jaeger-trace.png)
+
+![Câu 20 - dữ liệu event thô trong broker](observability-demo/screenshots/cau-20-du-lieu-event-tho.png)
 
 ---
 
@@ -664,7 +703,7 @@ flowchart LR
 | Replay/recovery | Consumer group mới + SQL: replay vào DB mới, `count/sum` đúng |
 | Correctness | Tập event chuẩn: aggregate đúng với duplicate/out-of-order |
 
-- **Bản in:** giao diện nhập, Kafka UI, cây source và dashboard lag.
+- **Bản in đúng theo đề:** giao diện nhập dữ liệu và cây thư mục mã nguồn.
 
 ---
 
