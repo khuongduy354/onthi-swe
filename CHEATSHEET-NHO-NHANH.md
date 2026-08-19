@@ -68,15 +68,15 @@ Latency và security vẫn phải kiểm soát, nhưng ba dòng trên là phần
 | Bounded execution | `max_steps`, timeout | Tạo task không thể hoàn thành → chạy agent → đếm bước/thời gian → dừng đúng giới hạn |
 | Reliability | Mock tool lỗi | Cho tool trả timeout/5xx → chạy agent → xem retry/log → phục hồi và không lặp side effect |
 
-### Câu 13 — Event Sourcing: nhớ **Audit – Replay – Tạo view mới**
+### Câu 13 — Event Sourcing: nhớ **Audit – Replay – Performance**
 
 | Quality | Công cụ | Các bước kiểm tra cụ thể |
 |---|---|---|
 | Auditability | Event Store UI/SQL | Thực hiện vài command → mở event stream → đối chiếu từng thay đổi → đủ event, event cũ không bị sửa |
 | Recoverability | Rebuild script | Ghi baseline read model → xóa/tạo bảng mới → replay events → state/count bằng baseline |
-| Extensibility | Projector test | Viết projector/read model mới → replay event cũ → tạo view mới mà không sửa event cũ |
+| Performance | Locust/Prometheus | Chạy tải command/query → đo append p95, query p95 và projection lag → so với ngưỡng |
 
-Consistency và projection lag vẫn quan trọng, nhưng audit/replay/new projection là lý do đặc trưng để chọn Event Sourcing.
+Append-only và read model có thể giúp ghi/đọc nhanh, nhưng Event Sourcing **không tự động nhanh**: replay và projection lag là chi phí phải đo. Khả năng tạo read model mới từ event cũ là lợi ích phụ về modifiability.
 
 ### Câu 17 — Event-Driven: nhớ **Ít dính – Scale – Chịu lỗi**
 
