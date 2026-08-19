@@ -6,6 +6,8 @@ Mục tiêu của file này: nhớ được **core**, tự viết/vẽ lại tro
 
 Các câu có hỏi đặc tính chất lượng: **1, 6, 8, 9, 11, 13, 17, 21**.
 
+Không ép mỗi kiến trúc phải có cùng số lượng. Chỉ giữ các quality **nổi bật hoặc gắn trực tiếp với trade-off của kiến trúc đó**.
+
 Công thức trả lời mỗi đặc tính:
 
 > **Tên quality → công cụ → các bước kiểm tra → metric/kết quả mong đợi**
@@ -17,23 +19,25 @@ Bốn bước dùng lại cho mọi quality:
 3. **Quan sát:** thu metric, log, trace hoặc output.
 4. **Kết luận:** so với baseline/ngưỡng/kết quả đúng.
 
-### Câu 1 — Microservices: nhớ **Nhanh – Scale – Sống – Deploy**
+### Câu 1 — Microservices: nhớ **Scale – Sống – Deploy**
 
 | Quality | Công cụ | Các bước kiểm tra cụ thể |
 |---|---|---|
-| Performance | `wrk2`/Locust | Chọn workload → chạy tải → lấy p95/RPS/error rate → so với ngưỡng |
 | Scalability | Load test + Kubernetes | Chạy tải với 1 replica → tăng replica → chạy lại cùng tải → throughput tăng/latency không xấu đi |
 | Availability | `kubectl delete pod` | Gửi request liên tục → xóa một pod → đo request lỗi/thời gian hồi phục → hệ thống vẫn phục vụ |
 | Deployability | Docker/Kubernetes | Ghi version hiện tại → deploy riêng một service → kiểm tra service khác → chúng không phải deploy lại |
 
-### Câu 6 — Micro-Frontends: nhớ **Deploy – Cô lập – Nhanh – Đồng bộ**
+Performance vẫn cần quan sát khi test, nhưng không phải lợi ích tự động của Microservices vì network call có thể làm latency tăng.
+
+### Câu 6 — Micro-Frontends: nhớ **Tự đổi – Tự deploy – Cô lập**
 
 | Quality | Công cụ | Các bước kiểm tra cụ thể |
 |---|---|---|
+| Modifiability/team autonomy | Git + CI | Sửa feature trong một MFE → xem file/repo/build bị ảnh hưởng → chỉ MFE đó cần thay đổi |
 | Deployability | CI/CD | Sửa một MFE → build/deploy riêng → mở hệ thống → MFE khác không build/deploy lại |
 | Fault isolation | Playwright/DevTools | Mở hệ thống → chặn/tắt một remote → reload → Shell và MFE khác vẫn dùng được |
-| Performance | Lighthouse | Chạy Lighthouse cùng cấu hình → lấy LCP/INP/bundle size → so với ngưỡng/baseline |
-| UI consistency | Storybook/visual test | Render các component → chụp visual snapshot → so với mẫu → không lệch design system |
+
+Performance và UI consistency là trade-off cần kiểm soát, nhưng điểm phân biệt nhất của MFE là các phần có thể đổi/deploy độc lập.
 
 ### Câu 8 — JAMstack: nhớ **Nhanh – Scale – An toàn – Dễ deploy**
 
@@ -44,14 +48,15 @@ Bốn bước dùng lại cho mọi quality:
 | Security | OWASP ZAP/secret scanner | Build bundle → scan bundle/site → xem cảnh báo → không có secret/lỗi nghiêm trọng |
 | Deployability | GitHub Actions/Netlify | Commit thay đổi → pipeline build/deploy → đo thời gian → kiểm tra trang mới và rollback |
 
-### Câu 9 — RAG: nhớ **Tìm đúng – Nói đúng – Nhanh – Không lộ**
+### Câu 9 — RAG: nhớ **Tìm đúng – Nói có căn cứ – Kiến thức mới**
 
 | Quality | Công cụ | Các bước kiểm tra cụ thể |
 |---|---|---|
 | Retrieval relevance | Bộ câu hỏi chuẩn | Chuẩn bị câu hỏi + chunk đúng → retrieve top-k → kiểm tra chunk đúng → tính Recall@k |
-| Answer correctness | Đáp án/citation chuẩn | Hỏi bộ câu chuẩn → lưu answer/citation → đối chiếu đáp án/tài liệu → tính tỷ lệ đúng |
-| Performance | Locust/OpenTelemetry | Chọn tải → gửi query → đo retrieval và end-to-end latency → lấy p95/error rate |
-| Security | Test hai tài khoản | Nạp tài liệu riêng cho A/B → đăng nhập A → hỏi nội dung của B → hệ thống không trả chunk của B |
+| Groundedness/correctness | Đáp án/citation chuẩn | Hỏi bộ câu chuẩn → lưu answer/citation → đối chiếu tài liệu → câu trả lời được context hỗ trợ |
+| Freshness | Indexer log + Vector DB | Thêm tài liệu mới → chạy indexing → hỏi nội dung mới → đo thời gian đến khi tìm được |
+
+Latency và security vẫn phải kiểm soát, nhưng ba dòng trên là phần đặc trưng nhất của RAG.
 
 ### Câu 11 — LLM Agent: nhớ **Làm đúng – An toàn – Biết dừng – Chịu lỗi**
 
@@ -62,23 +67,25 @@ Bốn bước dùng lại cho mọi quality:
 | Bounded execution | `max_steps`, timeout | Tạo task không thể hoàn thành → chạy agent → đếm bước/thời gian → dừng đúng giới hạn |
 | Reliability | Mock tool lỗi | Cho tool trả timeout/5xx → chạy agent → xem retry/log → phục hồi và không lặp side effect |
 
-### Câu 13 — Event Sourcing: nhớ **Audit – Replay – Đúng – Nhanh**
+### Câu 13 — Event Sourcing: nhớ **Audit – Replay – Tạo view mới**
 
 | Quality | Công cụ | Các bước kiểm tra cụ thể |
 |---|---|---|
 | Auditability | Event Store UI/SQL | Thực hiện vài command → mở event stream → đối chiếu từng thay đổi → đủ event, event cũ không bị sửa |
 | Recoverability | Rebuild script | Ghi baseline read model → xóa/tạo bảng mới → replay events → state/count bằng baseline |
-| Consistency | Test duplicate/version | Gửi duplicate và command sai version → đọc state/events → duplicate không đổi state, sai version bị từ chối |
-| Performance | Locust/Prometheus | Chọn tải command/query → chạy test → đo append/query p95 và projection lag → so ngưỡng |
+| Extensibility | Projector test | Viết projector/read model mới → replay event cũ → tạo view mới mà không sửa event cũ |
 
-### Câu 17 — Event-Driven: nhớ **Ít dính – Scale – Không mất – Không trùng**
+Consistency và projection lag vẫn quan trọng, nhưng audit/replay/new projection là lý do đặc trưng để chọn Event Sourcing.
+
+### Câu 17 — Event-Driven: nhớ **Ít dính – Scale – Chịu lỗi**
 
 | Quality | Công cụ | Các bước kiểm tra cụ thể |
 |---|---|---|
-| Loose coupling | Contract test | Giữ nguyên producer → thêm consumer mới theo event contract → publish event → cả hai consumer hoạt động |
+| Modifiability/loose coupling | Contract test | Giữ nguyên producer → thêm consumer mới theo event contract → publish event → cả hai consumer hoạt động |
 | Scalability | Kafka + load test | Chạy với 1 consumer → đo throughput/lag → tăng partition/consumer → chạy lại cùng tải → so kết quả |
 | Reliability | Retry/DLQ | Làm consumer lỗi tạm thời/lâu dài → publish event → xem retry → lỗi tạm phục hồi, lỗi lâu vào DLQ |
-| Idempotency | Gửi cùng `eventId` hai lần | Publish duplicate → consumer xử lý → query kết quả → business state chỉ đổi một lần |
+
+Idempotency là tactic bắt buộc để đạt reliability/correctness khi broker giao event lại.
 
 ### Câu 21 — Kappa: nhớ **Gần real-time – Scale – Hồi phục – Đúng**
 
@@ -127,7 +134,7 @@ Client → Frontend → Search/User/Reservation → Geo/Rate
 
 | Câu | Core phải nhớ |
 |---:|---|
-| 1 | 4 quality + deployment view + các bước deploy |
+| 1 | Quality nổi bật + deployment view + các bước deploy |
 | 2 | Logic view + gRPC giữa services + process đặt phòng có input/output |
 | 3 | Security: TLS/auth; Scaling: service/load balancer → nhiều replica |
 | 4 | Log = việc xảy ra trong một service; Trace = đường đi toàn request qua nhiều service |
@@ -149,7 +156,7 @@ Browser → App Shell → Account MFE | Search MFE | Report MFE → API
 
 | Câu | Core phải nhớ |
 |---:|---|
-| 6 | 4 quality + logic view + cách ghép + cách giao tiếp |
+| 6 | Quality nổi bật + logic view + cách ghép + cách giao tiếp |
 | 7 | Mỗi MFE build/deploy lên CDN riêng; Shell tải `remoteEntry.js` |
 
 ### JAMstack
@@ -162,7 +169,7 @@ Git/CMS → Build → HTML/CSS/JS → CDN → Browser → API
 
 | Câu | Core phải nhớ |
 |---:|---|
-| 8 | 4 quality + logic view; nhanh vì trang tĩnh nằm trên CDN |
+| 8 | Quality nổi bật + logic view; nhanh vì trang tĩnh nằm trên CDN |
 
 ## Topic 3 — RAG và LLM Agent, câu 9–12
 
@@ -180,7 +187,7 @@ Question → Retrieve top-k → Prompt + context → LLM → Answer + citation
 
 | Câu | Core phải nhớ |
 |---:|---|
-| 9 | 4 quality + logic view của indexing và query |
+| 9 | Quality nổi bật + logic view của indexing và query |
 | 10 | Deployment: Web/API/Worker/Vector DB/LLM; index trước rồi query thử |
 
 ### LLM Agent
@@ -196,7 +203,7 @@ User → Agent → LLM → Permission check → Tool → Result → Agent → An
 
 | Câu | Core phải nhớ |
 |---:|---|
-| 11 | 4 quality + logic view của vòng lặp Agent–LLM–Tool |
+| 11 | Quality nổi bật + logic view của vòng lặp Agent–LLM–Tool |
 | 12 | Deployment: API → Queue → Worker → LLM/Tools; DB lưu checkpoint |
 
 ## Topic 4 — Event Sourcing, câu 13–16
@@ -214,7 +221,7 @@ Command → Aggregate → Event Store → Projector → Read Model → Query
 
 | Câu | Core phải nhớ |
 |---:|---|
-| 13 | 4 quality + logic view |
+| 13 | Quality nổi bật + logic view |
 | 14 | Deploy Command API, Event Store, Projector, Read DB, Query API |
 | 15 | Process xuất danh sách: Query API đọc Read Model, không replay mỗi request |
 | 16 | Storage + `state rỗng → đọc event đúng thứ tự → apply → state hiện tại`; rebuild projection |
@@ -241,7 +248,7 @@ Producer → Kafka/RabbitMQ → Consumer A | Consumer B → Database
 
 | Câu | Core phải nhớ |
 |---:|---|
-| 17 | 4 quality + logic view Producer–Broker–Consumers |
+| 17 | Quality nổi bật + logic view Producer–Broker–Consumers |
 | 18 | Mỗi producer/broker/consumer chạy container riêng; deploy broker/topic trước |
 | 19 | Input → validate schema/auth/business rule → DB + Outbox cùng transaction → publish event |
 | 20 | Cùng `eventId/traceId` đi từ producer qua broker đến consumer; log + trace + metrics |
@@ -267,7 +274,7 @@ Data Source → Kafka log → Flink/Kafka Streams → Serving DB → Report API 
 
 | Câu | Core phải nhớ |
 |---:|---|
-| 21 | 4 quality + logic view ở trên |
+| 21 | Quality nổi bật + logic view ở trên |
 | 22 | Process: raw events → validate/deduplicate/aggregate → Serving DB → API → report |
 
 ---
