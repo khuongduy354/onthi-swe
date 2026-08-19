@@ -9,7 +9,7 @@
 - **Khái niệm:** trả lời WHAT → HOW → WHY → WHEN.
 - **Logic view:** chức năng/trách nhiệm → quan hệ → công nghệ/ngôn ngữ của từng thành phần.
 - **Deployment view:** node phần cứng/phần mềm → artifact/module → giao thức kết nối.
-- **Process view:** input cụ thể → biến đổi → output cụ thể → công nghệ thực hiện.
+- **Process view:** các process chạy lúc runtime → input/biến đổi/output → IPC/giao thức → concurrency nếu có.
 - **Quality:** mỗi đặc tính đi cùng công cụ, cách kiểm tra và metric.
 - **Bằng chứng:** chỉ nói điều đã thực hành; nộp đúng bản in giao diện/câu lệnh liên quan.
 - **Thời gian:** 10 phút viết A4 không dùng tài liệu → 2 phút chọn bản in → 5–10 phút vấn đáp.
@@ -88,7 +88,7 @@ kubectl get pods,svc
 
 ### Đáp án cốt lõi
 
-- **Core:** logic view cho biết service nào làm gì; process view cho biết một use case chạy theo thứ tự nào.
+- **Core:** logic view cho biết service nào làm gì; process view cho biết các process runtime xử lý và truyền dữ liệu thế nào.
 
 ```mermaid
 flowchart LR
@@ -108,21 +108,15 @@ flowchart LR
 **Process view: đặt phòng**
 
 ```mermaid
-sequenceDiagram
-    actor Client
-    participant F as Frontend
-    participant U as User Service
-    participant R as Reservation Service
-    participant DB as MongoDB/Memcached
-    Client->>F: HTTP reserve request
-    F->>F: kiểm tra ngày, hotelId, username
-    F->>U: gRPC CheckUser
-    U-->>F: đúng/sai
-    F->>R: gRPC MakeReservation
-    R->>DB: kiểm tra phòng và lưu reservation
-    DB-->>R: kết quả
-    R-->>F: success/failure
-    F-->>Client: HTTP response
+flowchart LR
+    I[/Input: ngày, hotelId, số phòng, tài khoản/] -->|HTTP| F[Frontend process - Go<br/>validate input]
+    F -->|gRPC CheckUser| U[User Service process - Go]
+    U --> D{Tài khoản đúng?}
+    D -->|Không| O1[/Output: thất bại/]
+    D -->|Có| R[Reservation Service process - Go]
+    R <-->|đọc cache| C[(Memcached)]
+    R -->|ghi reservation| DB[(MongoDB)]
+    DB --> O2[/Output: thành công/thất bại/]
 ```
 
 - **Input:** ngày, hotel ID, số phòng và tài khoản. **Output:** đặt phòng thành công/thất bại.
@@ -486,7 +480,17 @@ flowchart TB
 ### Đáp án cốt lõi
 
 - **Core:** Query API đọc danh sách từ Read Model đã được projector tính sẵn, không replay mỗi lần xem.
-- **Process view:** `Event Store → Python Projector → PostgreSQL Read Model`; `User → UI --REST→ FastAPI Query API --SQL→ Read Model → JSON list → UI`.
+
+```mermaid
+flowchart LR
+    ES[(Event Store)] -->|event stream| P[Projector process - Python]
+    P -->|upsert| RM[(PostgreSQL Read Model)]
+    I[/Input: token, filter, page/] -->|REST| Q[Query API process - FastAPI]
+    Q -->|SQL query| RM
+    RM --> Q
+    Q --> O[/Output: JSON list + total/]
+```
+
 - **Input:** token, filter và phân trang.
 - **Xử lý:** kiểm quyền/tham số → query Read Model → tạo DTO.
 - **Output:** danh sách, tổng số dòng và thông tin phân trang.
@@ -580,7 +584,22 @@ flowchart TB
 ### Đáp án cốt lõi
 
 - **Core:** chỉ input hợp lệ mới được lưu và tạo event.
-- **Process view:** `User → API → Validate → DB + Outbox → Kafka → Consumer → Result DB`.
+
+```mermaid
+flowchart LR
+    I[/Input: dữ liệu + JWT/] -->|HTTP| API[API process - FastAPI]
+    API --> V{Schema, quyền và<br/>business rule hợp lệ?}
+    V -->|Không| E[/400, 401, 403 hoặc 422/]
+    V -->|Có| TX[DB transaction:<br/>business data + outbox]
+    TX --> DB[(PostgreSQL)]
+    DB --> O[/Output: ID/]
+    DB --> RELAY[Outbox Relay process]
+    RELAY -->|event| K[(Kafka)]
+    K --> C[Consumer process]
+    C --> RDB[(Result DB)]
+    C -. lỗi nhiều lần .-> DLQ[(DLQ)]
+```
+
 - **Công cụ kiểm tra:** Pydantic/JSON Schema kiểm cấu trúc; JWT middleware kiểm quyền; service/DB constraint kiểm business rule.
 - **Input sai:** trả `400/401/403/422`, không lưu.
 - **Input đúng:** ghi business data + outbox trong một transaction → commit → trả ID → relay publish event.
@@ -666,20 +685,14 @@ flowchart LR
 - **Core:** stream processor tính sẵn số liệu; Report API chỉ đọc Serving DB.
 
 ```mermaid
-sequenceDiagram
-    participant S as Data source
-    participant K as Kafka
-    participant F as Flink processor
-    participant DB as Serving DB
-    actor U as User
-    participant API as Report API
-    S->>K: raw event
-    K->>F: đọc event
-    F->>DB: cập nhật aggregate
-    U->>API: yêu cầu báo cáo
-    API->>DB: query aggregate
-    DB-->>API: kết quả
-    API-->>U: chart/table
+flowchart LR
+    S[Data Source process] -->|raw events| K[(Kafka log)]
+    K -->|stream| F[Flink process<br/>validate, deduplicate, aggregate]
+    F -->|SQL upsert + checkpoint| DB[(Serving DB)]
+    I[/Input: user + khoảng ngày/] -->|REST| API[Report API process]
+    API -->|SQL query| DB
+    DB --> API
+    API --> O[/Output: chart/table + updated_at/]
 ```
 
 - **Input:** event dữ liệu; yêu cầu báo cáo gồm user và khoảng ngày.
@@ -695,6 +708,6 @@ sequenceDiagram
 - Khái niệm có WHAT → HOW → WHY → WHEN và trade-offs.
 - Logic view có trách nhiệm → quan hệ → công nghệ/ngôn ngữ.
 - Deployment view có node → artifact/module → giao thức.
-- Process view có input → biến đổi → output → công nghệ.
+- Process view có runtime processes → input/biến đổi/output → IPC/giao thức → công nghệ.
 - Mỗi đặc tính chất lượng có công cụ → cách kiểm tra → metric.
 - Chỉ nói điều đã thực hành và chuẩn bị đúng bản in liên quan.
