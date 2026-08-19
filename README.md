@@ -7,10 +7,17 @@
 
 ## Yêu cầu chung
 
-- Viết câu trả lời trên giấy A4 bằng bút, không sử dụng tài liệu.
-- Giải thích dựa trên kiến thức lý thuyết và bài thực hành đã làm.
-- Nộp kèm đúng bản in giao diện/câu lệnh nếu câu hỏi yêu cầu.
-- Với mỗi sơ đồ, ghi rõ trách nhiệm thành phần, công cụ/công nghệ và quan hệ hoặc giao thức kết nối.
+- Có **10 phút** viết câu trả lời trên giấy A4, không sử dụng tài liệu; sau đó có **2 phút** chọn bản in liên quan.
+- Với khái niệm/phương pháp, trả lời ngắn gọn: **WHAT** (là gì), **HOW** (làm thế nào), **WHY** (lợi ích/khó khăn) và **WHEN** (khi nào áp dụng).
+- Với **logic view**, ghi chức năng/trách nhiệm, quan hệ và công nghệ/ngôn ngữ của từng thành phần.
+- Với **deployment view**, ghi node phần cứng/phần mềm, artifact/module chạy trên node và giao thức kết nối.
+- Với **process view**, ghi input cụ thể, các bước biến đổi, output cụ thể và công nghệ thực hiện.
+- Chỉ trình bày điều đã học/thực hành; không suy diễn không có bằng chứng.
+- Nộp đúng bản in giao diện/câu lệnh mà câu hỏi yêu cầu; nên ghi số câu lên bản in để chọn nhanh.
+- Trình bày to, rõ ràng, mạch lạc và giải thích được mọi box/mũi tên đã vẽ.
+- Phần vấn đáp kéo dài khoảng **5–10 phút**; phải giải thích được nội dung đã viết và trả lời câu hỏi bổ sung.
+- **Chấm điểm:** giấy A4 bỏ trống/không liên quan là 0; trả lời thiếu hoặc thiếu bản in tối đa 8; trả lời đủ kèm đúng bản in được trên 8–10 điểm.
+- Được đổi phiếu tối đa 2 lần; mỗi lần đổi bị trừ 2 điểm.
 
 ---
 

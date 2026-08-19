@@ -6,10 +6,14 @@
 
 ## Kiến thức chung
 
-- **Logic view:** các thành phần phần mềm và trách nhiệm.
-- **Deployment view:** thành phần chạy ở đâu và bằng công cụ nào.
-- **Process view:** input → xử lý → output.
-- **Quality:** mỗi đặc tính phải đi cùng công cụ và cách đo.
+- **Khái niệm:** trả lời WHAT → HOW → WHY → WHEN.
+- **Logic view:** chức năng/trách nhiệm → quan hệ → công nghệ/ngôn ngữ của từng thành phần.
+- **Deployment view:** node phần cứng/phần mềm → artifact/module → giao thức kết nối.
+- **Process view:** input cụ thể → biến đổi → output cụ thể → công nghệ thực hiện.
+- **Quality:** mỗi đặc tính đi cùng công cụ, cách kiểm tra và metric.
+- **Bằng chứng:** chỉ nói điều đã thực hành; nộp đúng bản in giao diện/câu lệnh liên quan.
+- **Thời gian:** 10 phút viết A4 không dùng tài liệu → 2 phút chọn bản in → 5–10 phút vấn đáp.
+- **Chấm điểm:** giấy A4 trống/không liên quan là 0; trả lời thiếu hoặc thiếu bản in tối đa 8; đủ ý và đúng bản in được trên 8–10 điểm.
 
 ---
 
@@ -28,12 +32,13 @@
 ### Đáp án cốt lõi
 
 - **Core:** chia hệ thống thành các service độc lập để có thể deploy và scale riêng.
+- **Khi dùng:** hệ thống/đội ngũ lớn, cần phát hành hoặc scale từng chức năng độc lập; đổi lại vận hành phức tạp hơn monolith.
 - **1. Performance — Công cụ:** Locust/JMeter; **cách đo:** p95 latency, request/giây và error rate.
 - **2. Scalability — Công cụ:** Locust + `kubectl scale`; **cách đo:** so kết quả cùng một tải trước và sau khi tăng replica.
 - **3. Availability — Công cụ:** `kubectl delete pod`; **cách đo:** số request lỗi và thời gian phục hồi khi một pod chết.
 - **4. Deployability — Công cụ:** GitHub Actions/Kubernetes; **cách đo:** deploy một service mà service khác không phải deploy lại.
 - **5. Security — Công cụ:** Postman/OWASP ZAP; **cách đo:** không token `401`, sai quyền `403`, đúng quyền `2xx`, không có lỗi nghiêm trọng.
-- **Deployment view:** `Browser → Nginx/Gateway → các service containers → database`; `service → Kafka → worker`.
+- **Deployment view:** `Browser --HTTPS→ Nginx/Gateway --REST→ các service containers --SQL→ database`; `service --event→ Kafka → worker`.
 - **Công cụ triển khai:** Docker đóng gói; Kubernetes chạy/scale; PostgreSQL lưu dữ liệu; Kafka truyền event.
 - **Các bước:** test → build image → push registry → cấu hình DB/secret → deploy → kiểm tra health/log.
 - **Bản in:** kết quả load test, trạng thái container/pod và lệnh deploy.
@@ -142,6 +147,7 @@
 ### Đáp án cốt lõi
 
 - **Core:** App Shell ghép các giao diện nhỏ có thể phát triển và deploy độc lập.
+- **Khi dùng:** frontend lớn, nhiều nhóm cần phát hành riêng; ứng dụng nhỏ thường không cần vì tăng độ phức tạp tích hợp.
 - **Deployability — Công cụ:** CI/CD; **cách đo:** deploy một MFE mà MFE khác không build lại.
 - **Fault isolation — Công cụ:** Playwright/DevTools; **cách đo:** tắt một remote, Shell và phần khác vẫn chạy.
 - **Performance — Công cụ:** Lighthouse; **cách đo:** LCP, INP và kích thước JavaScript.
@@ -166,7 +172,7 @@
 ### Đáp án cốt lõi
 
 - **Core:** mỗi MFE được build/deploy riêng; browser tải chúng vào App Shell.
-- **Deployment view:** `Repo MFE → CI build → CDN`; `Browser → Shell → remoteEntry.js → Backend API`.
+- **Deployment view:** `Repo MFE → CI build → CDN`; `Browser --HTTPS→ Shell/CDN → remoteEntry.js --HTTPS→ Backend API`.
 - **Công cụ:** GitHub Actions, npm/Vite/Webpack, Module Federation và Netlify/Vercel/CDN.
 - **Các bước:** test/build từng MFE → upload artifact có version → cập nhật manifest của Shell → E2E → phát hành → rollback manifest nếu lỗi.
 - **Bản in:** lệnh build/upload, CI log và giao diện sau deploy.
@@ -186,6 +192,7 @@
 ### Đáp án cốt lõi
 
 - **Core:** tạo sẵn Markup lúc build, phát từ CDN; JavaScript tạo tương tác và gọi API cho dữ liệu động.
+- **Khi dùng:** website nhiều nội dung tĩnh, cần tải nhanh và deploy đơn giản; không phù hợp phần động thời gian thực quá phức tạp.
 - **Performance — Công cụ:** Lighthouse; **cách đo:** LCP và TTFB.
 - **Scalability — Công cụ:** k6/Locust; **cách đo:** request/giây, p95 và error rate của URL CDN.
 - **Availability — Công cụ:** Playwright/curl; **cách đo:** tắt API, trang tĩnh vẫn trả `200` và có fallback.
@@ -209,6 +216,7 @@
 ### Đáp án cốt lõi
 
 - **Core:** tìm đoạn tài liệu liên quan rồi đưa vào prompt để LLM trả lời có căn cứ.
+- **Khi dùng:** LLM cần trả lời theo tài liệu riêng hoặc thường xuyên cập nhật mà không huấn luyện lại model.
 - **Retrieval relevance — Công cụ:** bộ câu hỏi chuẩn/script eval; **cách đo:** Recall@k hoặc tỷ lệ top-k chứa đoạn đúng.
 - **Answer/citation correctness — Công cụ:** đáp án chuẩn/kiểm tra tay; **cách đo:** tỷ lệ câu đúng và citation thật sự hỗ trợ câu trả lời.
 - **Performance — Công cụ:** Locust/OpenTelemetry; **cách đo:** p95 retrieval và end-to-end latency.
@@ -232,7 +240,7 @@
 ### Đáp án cốt lõi
 
 - **Core:** tách indexing chạy nền khỏi query phục vụ người dùng.
-- **Deployment view:** `Browser → Web → Query API → [Vector DB | Embedding API | LLM API]`; `Documents → Worker → Vector DB`.
+- **Deployment view:** `Browser --HTTPS→ Web --REST→ Query API --HTTPS→ [Vector DB | Embedding API | LLM API]`; `Documents → Worker → Vector DB`.
 - **Công cụ:** Docker/Kubernetes, Kafka/queue, Pinecone, LLM API và Kubernetes Secret.
 - **Các bước:** tạo vector index → cấu hình secret → build/deploy worker → index dữ liệu mẫu → deploy Query API/Web → hỏi thử và kiểm tra citation/log.
 - **Bản in:** lệnh deploy, trạng thái container/pod, vector DB UI và giao diện query.
@@ -252,6 +260,7 @@
 ### Đáp án cốt lõi
 
 - **Core:** agent dùng LLM để chọn và gọi tool nhiều bước cho đến khi hoàn thành hoặc phải dừng.
+- **Khi dùng:** nhiệm vụ cần quyết định nhiều bước hoặc gọi công cụ; chatbot chỉ trả lời văn bản thì không cần agent.
 - **Correctness — Công cụ:** bộ task chuẩn; **cách đo:** task success rate.
 - **Safety — Công cụ:** policy test; **cách đo:** tool thiếu quyền bị chặn hoặc yêu cầu approval.
 - **Bounded execution — Công cụ:** cấu hình agent; **cách đo:** dừng đúng `max_steps`, timeout hoặc cost limit.
@@ -275,7 +284,7 @@
 ### Đáp án cốt lõi
 
 - **Core:** Agent API nhận task; worker chạy agent và gọi LLM/tools; DB lưu checkpoint.
-- **Deployment view:** `Client → Gateway/Auth → Agent API → Queue → Worker → [LLM | Tools]`; Worker → Checkpoint DB/Secrets/Logs.
+- **Deployment view:** `Client --HTTPS→ Gateway/Auth --REST→ Agent API → Queue → Worker --HTTPS→ [LLM | Tools]`; Worker → Checkpoint DB/Secrets/Logs.
 - **Công cụ:** FastAPI, Docker/Kubernetes, Temporal/Kafka, PostgreSQL, Vault/Secret và OpenTelemetry.
 - **Các bước:** định nghĩa tool/quyền → lưu secret → build/deploy API/worker/queue/DB → đặt max steps/timeout/retry → test staging → theo dõi rồi mở rộng.
 - **Bản in:** lệnh/status deploy và trace một agent run.
@@ -295,6 +304,7 @@
 ### Đáp án cốt lõi
 
 - **Core:** lưu chuỗi event bất biến; trạng thái hiện tại được tính lại từ chuỗi đó.
+- **Khi dùng:** cần audit đầy đủ, replay hoặc tạo nhiều read model; không nên dùng nếu CRUD đơn giản và không cần lịch sử.
 - **Auditability — Công cụ:** EventStoreDB UI/SQL; **cách đo:** mọi thay đổi có event và ứng dụng không sửa/xóa được.
 - **Recoverability — Công cụ:** rebuild script; **cách đo:** replay tạo lại đúng state/count cũ.
 - **Extensibility — Công cụ:** projector test; **cách đo:** tạo read model mới mà không đổi event cũ.
@@ -318,7 +328,7 @@
 ### Đáp án cốt lõi
 
 - **Core:** Command API ghi Event Store; Projector tạo Read Model; Query API đọc Read Model.
-- **Deployment view:** `Command API container → Event Store`; `Event Store → Projector container → Read DB`; `Query API container → Read DB`.
+- **Deployment view:** `Command API container --append→ Event Store`; `Event Store --subscription→ Projector container --SQL→ Read DB`; `Query API container --SQL→ Read DB`.
 - **Công cụ:** Docker/Kubernetes, EventStoreDB/PostgreSQL, volume/backup và OpenTelemetry.
 - **Các bước:** deploy Event Store → tạo schema → deploy Command API → deploy Read DB/Projector → replay → deploy Query API → kiểm tra end-to-end.
 - **Bản in:** lệnh deploy, Event Store UI và log projector.
@@ -337,7 +347,7 @@
 ### Đáp án cốt lõi
 
 - **Core:** Query API đọc danh sách từ Read Model đã được projector tính sẵn, không replay mỗi lần xem.
-- **Process view:** `Event Store → Projector → Read Model`; `User → UI → Query API → Read Model → JSON list → UI`.
+- **Process view:** `Event Store → Python Projector → PostgreSQL Read Model`; `User → UI --REST→ FastAPI Query API --SQL→ Read Model → JSON list → UI`.
 - **Input:** token, filter và phân trang.
 - **Xử lý:** kiểm quyền/tham số → query Read Model → tạo DTO.
 - **Output:** danh sách, tổng số dòng và thông tin phân trang.
@@ -382,6 +392,7 @@
 ### Đáp án cốt lõi
 
 - **Core:** producer phát event; broker chuyển/giữ event; consumer độc lập xử lý.
+- **Khi dùng:** nhiều thành phần cần phản ứng bất đồng bộ với cùng sự kiện và cần tách producer khỏi consumer.
 - **Loose coupling — Công cụ:** Git/contract test; **cách đo:** thêm consumer mà producer không đổi.
 - **Scalability — Công cụ:** Locust + Kafka/Grafana; **cách đo:** events/giây và lag trước/sau khi tăng partition/consumer.
 - **Availability — Công cụ:** Docker/Kafka UI; **cách đo:** tắt consumer rồi bật lại, event tồn đọng vẫn được xử lý.
@@ -405,7 +416,7 @@
 ### Đáp án cốt lõi
 
 - **Core:** broker và mỗi producer/consumer chạy thành process/container riêng.
-- **Deployment view:** `Client → Producer API → PostgreSQL/Outbox → Kafka → Consumer containers → Databases`.
+- **Deployment view:** `Client --HTTPS→ Producer API container --SQL→ PostgreSQL/Outbox --event→ Kafka → Consumer containers --SQL→ Databases`.
 - **Công cụ:** Docker/Kubernetes, PostgreSQL, Kafka/RabbitMQ và Grafana.
 - **Các bước:** deploy broker/topic → deploy DB/consumers → deploy producer → gửi event test → kiểm tra kết quả/lag → scale consumer nếu cần.
 - **Bản in:** lệnh deploy, broker UI và trạng thái consumers.
@@ -470,6 +481,7 @@
 ### Đáp án cốt lõi
 
 - **Core:** Kappa dùng một stream pipeline; muốn tính lại thì replay event log.
+- **Khi dùng:** dữ liệu đến liên tục, báo cáo gần thời gian thực và event log được giữ đủ lâu để replay.
 - **Near real time — Công cụ:** Kafka/Flink metrics; **cách đo:** event-to-report latency và lag.
 - **Scalability — Công cụ:** Locust + Kafka/Flink; **cách đo:** events/giây trước/sau khi tăng partition/parallelism.
 - **Fault tolerance — Công cụ:** checkpoint + Docker/Kubernetes; **cách đo:** restart processor mà không mất/trùng kết quả.
@@ -493,7 +505,7 @@
 ### Đáp án cốt lõi
 
 - **Core:** stream processor tính sẵn số liệu; Report API chỉ đọc Serving DB.
-- **Process view:** `Raw events → Kafka → Processor → Serving DB`; `User → Report API → Serving DB → Chart/Table`.
+- **Process view:** `Raw events → Kafka → Flink Processor --SQL→ PostgreSQL Serving DB`; `User --REST→ Report API --SQL→ Serving DB → Chart/Table`.
 - **Input:** event dữ liệu; yêu cầu báo cáo gồm user và khoảng ngày.
 - **Xử lý:** validate/deduplicate → tính tổng theo ngày → lưu aggregate/checkpoint → API kiểm quyền và query.
 - **Output:** bảng/biểu đồ và thời điểm cập nhật cuối.
@@ -504,7 +516,9 @@
 
 ## Checklist trước khi thi
 
-- Vẽ đúng loại view mà đề yêu cầu.
-- Mỗi đặc tính chất lượng có công cụ và cách đo tương ứng.
-- Với process view, nêu đủ input → xử lý → output.
-- Chuẩn bị đúng bản in được yêu cầu.
+- Khái niệm có WHAT → HOW → WHY → WHEN.
+- Logic view có trách nhiệm → quan hệ → công nghệ/ngôn ngữ.
+- Deployment view có node → artifact/module → giao thức.
+- Process view có input → biến đổi → output → công nghệ.
+- Mỗi đặc tính chất lượng có công cụ → cách kiểm tra → metric.
+- Chỉ nói điều đã thực hành và chuẩn bị đúng bản in liên quan.
