@@ -4,10 +4,10 @@ File này chỉ dùng để chuẩn bị **bản in**, không phải đáp án h
 
 ## Trạng thái
 
-- **Đã có bằng chứng chạy thật:** câu 4 và 20.
-- **Chỉ cần chuẩn bị trang câu lệnh:** câu 1, 2, 3, 5, 7, 10, 12, 14, 18.
-- **Phải bổ sung ảnh UI/cây source của project tương ứng:** câu 6, 8, 9, 11, 13, 15, 17, 21, 22.
+- **Đã có giao diện/cây source thật:** câu 4, 6, 8, 9, 11, 13, 15, 17, 20, 21 và 22.
+- **Trang câu lệnh:** câu 1, 2, 3, 5, 7, 10, 12, 14 và 18.
 - **Đề không yêu cầu bản in riêng:** câu 16 và 19.
+- Các UI trong file được tạo từ hai demo chạy được: `observability-demo` và `print-artifacts-demo`.
 
 ---
 
@@ -26,9 +26,9 @@ Nộp trang lệnh này và, nếu có, một ảnh giao diện/cửa sổ termi
 ## Câu 2 — Cài đặt mã nguồn Microservices
 
 ```bash
-git clone <repository-url>
-cd <repository>
-docker compose build
+git clone https://github.com/khuongduy354/onthi-swe.git
+cd onthi-swe/observability-demo
+docker compose build gateway reservation
 docker compose up -d
 docker compose ps
 ```
@@ -59,18 +59,24 @@ Trong ảnh: **2 services, 2 spans** — `gateway-service: GET /availability` g�
 ## Câu 5 — Cài đặt component/service mới
 
 ```bash
-docker compose build loyalty
-docker compose up -d loyalty
-docker compose ps loyalty
-docker compose logs loyalty
+cd observability-demo
+docker compose build consumer
+docker compose up -d consumer
+docker compose ps consumer
+docker compose logs consumer
 ```
 
 ## Câu 6 — Micro-Frontends
 
-Phải chèn và in:
+Hai Micro-Frontend chạy riêng:
 
-1. Ảnh Account/Search/Report Micro-Frontend chạy riêng.
-2. Ảnh App Shell đã ghép các Micro-Frontend.
+![Account Micro-Frontend chạy riêng](print-artifacts-demo/screenshots/cau-06-account-mfe.png)
+
+![Search Micro-Frontend chạy riêng](print-artifacts-demo/screenshots/cau-06-search-mfe.png)
+
+App Shell tải và ghép ba UI fragment lúc runtime:
+
+![App Shell tổng hợp ba Micro-Frontend](print-artifacts-demo/screenshots/cau-06-composed-shell.png)
 
 ## Câu 7 — Triển khai Micro-Frontends
 
@@ -83,65 +89,101 @@ npx vercel --prod
 
 ## Câu 8 — JAMstack
 
-Phải chèn và in:
+Giao diện JAMstack được render từ file có sẵn trong `dist/`:
 
-1. Ảnh giao diện website.
-2. Cây mã nguồn tạo bằng `tree -L 2 -I 'node_modules|.git'`.
+![Giao diện JAMstack](print-artifacts-demo/screenshots/cau-08-jamstack.png)
+
+Cây mã nguồn thật:
+
+```text
+jamstack/
+├── build.py
+└── dist/
+    └── index.html
+```
 
 ## Câu 9 — RAG
 
-Phải chèn và in:
+Giao diện hỏi–đáp, top-2 chunks và citation:
 
-1. Ảnh giao diện hỏi–đáp RAG.
-2. Cây mã nguồn tạo bằng `tree -L 2 -I '.venv|node_modules|.git'`.
+![Giao diện local RAG](print-artifacts-demo/screenshots/cau-09-rag.png)
+
+Cây mã nguồn thật:
+
+```text
+rag/
+└── retriever.py       # tokenize, score top-k, answer + citations
+server.py              # route /rag và giao diện HTTP
+```
 
 ## Câu 10 — Triển khai RAG
 
 Chọn **một** trong hai: trang lệnh dưới đây hoặc ảnh giao diện công cụ triển khai.
 
 ```bash
-docker compose up --build -d
-docker compose ps
-docker compose logs rag-api indexer
+cd print-artifacts-demo
+docker build -t rag-demo .
+docker run -d --name rag-demo -p 8090:8090 rag-demo
+curl http://localhost:8090/rag
 ```
 
 ## Câu 11 — LLM-based Agent
 
-Phải chèn và in:
+Giao diện task, tool calls, tool results và final answer:
 
-1. Ảnh giao diện Agent thực hiện một task.
-2. Cây mã nguồn tạo bằng `tree -L 2 -I '.venv|node_modules|.git'`.
+![Giao diện Agent](print-artifacts-demo/screenshots/cau-11-agent.png)
+
+Cây mã nguồn thật:
+
+```text
+agent/
+└── agent.py           # planner, tools và agent loop
+server.py              # route /agent và giao diện HTTP
+```
+
+Lưu ý trung thực: demo offline dùng `MockLLMPlanner`; tools và agent loop chạy thật. Khi có API key/model local, thay planner bằng LLM mà không đổi tool contracts.
 
 ## Câu 12 — Triển khai LLM-based Agent
 
 Chọn **một** trong hai: trang lệnh dưới đây hoặc ảnh giao diện công cụ triển khai.
 
 ```bash
-docker compose up --build -d
-docker compose ps
-docker compose logs agent-api agent-worker
+cd print-artifacts-demo
+docker build -t agent-demo .
+docker run -d --name agent-demo -p 8090:8090 agent-demo
+curl http://localhost:8090/agent
 ```
 
 ## Câu 13 — Event Sourcing
 
-Phải chèn và in:
+Giao diện nhập command `StudentAdded`; hệ thống append event và projector tạo Read Model:
 
-1. Ảnh giao diện nhập dữ liệu/command.
-2. Cây mã nguồn tạo bằng `tree -L 2 -I '.venv|node_modules|.git'`.
+![Giao diện nhập Event Sourcing](print-artifacts-demo/screenshots/cau-13-event-sourcing-input.png)
+
+Cây mã nguồn thật:
+
+```text
+event_sourcing/
+└── model.py           # append-only EVENTS và hàm project()
+server.py              # command route, query route và UI
+```
 
 ## Câu 14 — Triển khai Event Sourcing
 
 Chọn **một** trong hai: trang lệnh dưới đây hoặc ảnh giao diện công cụ triển khai.
 
 ```bash
-docker compose up --build -d
-docker compose ps
-docker compose logs command-api projector query-api
+cd print-artifacts-demo
+docker build -t event-sourcing-demo .
+docker run -d --name event-sourcing-demo -p 8090:8090 event-sourcing-demo
+curl http://localhost:8090/event-sourcing/list
 ```
 
 ## Câu 15 — Danh sách Event Sourcing
 
-Phải chèn và in ảnh giao diện một danh sách được đọc từ Read Model.
+Danh sách được đọc từ kết quả `project()`, không replay trong giao diện:
+
+![Danh sách từ Event Sourcing Read Model](print-artifacts-demo/screenshots/cau-15-event-sourcing-list.png)
 
 ## Câu 16 — Lưu trữ và replay Event Sourcing
 
@@ -149,19 +191,27 @@ Phải chèn và in ảnh giao diện một danh sách được đọc từ Read
 
 ## Câu 17 — Event-Driven
 
-Phải chèn và in:
+Giao diện publish `ReservationCreated`, kèm `eventId`, consumer và kết quả xử lý:
 
-1. Ảnh giao diện nhập dữ liệu.
-2. Cây mã nguồn tạo bằng `tree -L 2 -I '.venv|node_modules|.git'`.
+![Giao diện nhập Event-Driven](print-artifacts-demo/screenshots/cau-17-event-driven-input.png)
+
+Cây mã nguồn thật:
+
+```text
+event_driven/
+└── broker.py          # event log, publish(), consume(), deduplicate
+server.py              # producer input route và UI
+```
 
 ## Câu 18 — Triển khai Event-Driven
 
 Chọn **một** trong hai: trang lệnh dưới đây hoặc ảnh giao diện công cụ triển khai.
 
 ```bash
-docker compose up --build -d
-docker compose ps
-docker compose logs producer consumer
+cd print-artifacts-demo
+docker build -t event-driven-demo .
+docker run -d --name event-driven-demo -p 8090:8090 event-driven-demo
+curl http://localhost:8090/event-driven/input
 ```
 
 ## Câu 19 — Nhập dữ liệu Event-Driven
@@ -190,15 +240,24 @@ Trong ảnh: topic `reservation-events`, partition/offset và JSON có `eventId`
 
 ## Câu 21 — Kappa
 
-Phải chèn và in:
+Giao diện thêm event vào durable stream:
 
-1. Ảnh giao diện nhập event.
-2. Cây mã nguồn tạo bằng `tree -L 2 -I '.venv|node_modules|.git'`.
+![Giao diện nhập event Kappa](print-artifacts-demo/screenshots/cau-21-kappa-input.png)
+
+Cây mã nguồn thật:
+
+```text
+kappa/
+└── pipeline.py        # RAW_EVENTS, deduplicate và aggregate
+server.py              # input, report và raw-data routes
+```
 
 ## Câu 22 — Báo cáo Kappa
 
-Phải chèn và in:
+Giao diện báo cáo được tính từ stream events:
 
-1. Ảnh bảng/biểu đồ báo cáo.
-2. Ảnh dữ liệu thô tạo ra đúng báo cáo đó.
+![Báo cáo Kappa](print-artifacts-demo/screenshots/cau-22-kappa-report.png)
 
+Dữ liệu thô tạo ra đúng count và total trong báo cáo:
+
+![Dữ liệu thô của báo cáo Kappa](print-artifacts-demo/screenshots/cau-22-kappa-raw.png)

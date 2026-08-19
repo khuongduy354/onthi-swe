@@ -5,6 +5,7 @@
 - **Cheat sheet nhớ nhanh:** [Core và quality attributes của 22 câu](CHEATSHEET-NHO-NHANH.md).
 - **Bộ bản in:** [Bản in nộp kèm cho 22 câu](BAN-IN-NOP-KEM-22-CAU.md).
 - **Demo chạy thật câu 4 và 20:** [Observability demo](observability-demo/README.md).
+- **Demo tạo UI/cây source cho bản in:** [Lightweight architecture demos](print-artifacts-demo/README.md).
 - Bản dưới đây chỉ **viết lại đề thi** thành các bullet ngắn gọn; không thêm nội dung trả lời.
 
 ## Yêu cầu chung
