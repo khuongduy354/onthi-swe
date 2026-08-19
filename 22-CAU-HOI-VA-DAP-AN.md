@@ -113,10 +113,8 @@ flowchart LR
     F -->|gRPC CheckUser| U[User Service process - Go]
     U --> D{Tài khoản đúng?}
     D -->|Không| O1[/Output: thất bại/]
-    D -->|Có| R[Reservation Service process - Go]
-    R <-->|đọc cache| C[(Memcached)]
-    R -->|ghi reservation| DB[(MongoDB)]
-    DB --> O2[/Output: thành công/thất bại/]
+    D -->|Có| R[Reservation Service process - Go<br/>kiểm tra phòng và tạo reservation]
+    R --> O2[/Output: thành công/thất bại/]
 ```
 
 - **Input:** ngày, hotel ID, số phòng và tài khoản. **Output:** đặt phòng thành công/thất bại.
