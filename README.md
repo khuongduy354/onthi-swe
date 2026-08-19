@@ -1,8 +1,7 @@
 # 22 câu hỏi thi Kiến trúc phần mềm — bản viết lại ngắn gọn
 
 - **Đề gốc:** [PDF 22 câu hỏi vấn đáp](materials/22-cau-hoi-thi-kien-truc-phan-mem.pdf) — GV. TS. Ngô Huy Biên, 2026.
-- **Nội dung trả lời:** [Tài liệu ôn thi đủ ý cho 22 câu](ON-THI.md).
-- **Bản gộp:** [22 câu hỏi rút gọn kèm đáp án](22-CAU-HOI-VA-DAP-AN.md).
+- **Tài liệu chính:** [22 câu hỏi rút gọn kèm đáp án](22-CAU-HOI-VA-DAP-AN.md).
 - Bản dưới đây chỉ **viết lại đề thi** thành các bullet ngắn gọn; không thêm nội dung trả lời.
 
 ## Yêu cầu chung

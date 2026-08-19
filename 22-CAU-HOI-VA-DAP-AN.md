@@ -17,6 +17,10 @@
 
 ---
 
+# Topic 1 — Microservices (câu 1–5)
+
+**Lý thuyết chung:** hệ thống được chia thành các service có trách nhiệm riêng. Service giao tiếp qua mạng, có thể deploy/scale độc lập nhưng cần xử lý lỗi mạng, dữ liệu phân tán và observability.
+
 ## Câu 1 — Microservices: chất lượng và triển khai
 
 ### Đề bài rút gọn
@@ -31,18 +35,44 @@
 
 ### Đáp án cốt lõi
 
-- **Core:** chia hệ thống thành các service độc lập để có thể deploy và scale riêng.
-- **Khi dùng:** hệ thống/đội ngũ lớn, cần phát hành hoặc scale từng chức năng độc lập; đổi lại vận hành phức tạp hơn monolith.
-- **Trade-offs:** dễ deploy/scale từng service, nhưng tăng lỗi mạng, dữ liệu phân tán và chi phí vận hành/giám sát.
-- **1. Performance — Công cụ:** Locust/JMeter; **cách đo:** p95 latency, request/giây và error rate.
-- **2. Scalability — Công cụ:** Locust + `kubectl scale`; **cách đo:** so kết quả cùng một tải trước và sau khi tăng replica.
+- **Ví dụ chung câu 1–5:** [DeathStarBench Hotel Reservation](https://github.com/delimitrou/DeathStarBench/tree/master/hotelReservation), viết bằng Go và giao tiếp nội bộ bằng gRPC.
+- **Core:** chia hệ thống thành các service độc lập để deploy và scale riêng.
+- **1. Performance — Công cụ:** `wrk2`; **cách đo:** p95 latency, request/giây và error rate.
+- **2. Scalability — Công cụ:** `wrk2` + `kubectl scale`; **cách đo:** cùng workload trước/sau khi tăng replica.
 - **3. Availability — Công cụ:** `kubectl delete pod`; **cách đo:** số request lỗi và thời gian phục hồi khi một pod chết.
-- **4. Deployability — Công cụ:** GitHub Actions/Kubernetes; **cách đo:** deploy một service mà service khác không phải deploy lại.
-- **5. Security — Công cụ:** Postman/OWASP ZAP; **cách đo:** không token `401`, sai quyền `403`, đúng quyền `2xx`, không có lỗi nghiêm trọng.
-- **Deployment view:** `Browser --HTTPS→ Nginx/Gateway --REST→ các service containers --SQL→ database`; `service --event→ Kafka → worker`.
-- **Công cụ triển khai:** Docker đóng gói; Kubernetes chạy/scale; PostgreSQL lưu dữ liệu; Kafka truyền event.
-- **Các bước:** test → build image → push registry → cấu hình DB/secret → deploy → kiểm tra health/log.
-- **Bản in:** kết quả load test, trạng thái container/pod và lệnh deploy.
+- **4. Deployability — Công cụ:** Docker Compose/Kubernetes/Helm; **cách đo:** deploy từng service/container.
+- **5. Security — Công cụ:** TLS + test HTTP/gRPC; **cách đo:** kết nối mã hóa hoạt động, kết nối sai cấu hình thất bại.
+
+```mermaid
+flowchart TB
+    U[Client] -->|HTTP/HTTPS| FE[Frontend pod]
+    subgraph K8s[Docker Compose / Kubernetes]
+        FE -->|gRPC| SEARCH[Search pod]
+        FE -->|gRPC| USER[User pod]
+        FE -->|gRPC| RES[Reservation pod]
+        SEARCH -->|gRPC| GEO[Geo pod]
+        SEARCH -->|gRPC| RATE[Rate pod]
+    end
+    GEO --> GM[(Geo MongoDB)]
+    RATE --> RM[(Rate MongoDB)]
+    RATE --> RC[(Rate Memcached)]
+    RES --> RSM[(Reservation MongoDB)]
+    RES --> RSC[(Reservation Memcached)]
+    FE & SEARCH & USER & RES & GEO & RATE -. discovery .-> CONSUL[Consul]
+    FE & SEARCH & USER & RES & GEO & RATE -. traces .-> JAEGER[Jaeger]
+```
+
+- **Công cụ triển khai:** Docker đóng gói; Compose/Kubernetes/Helm chạy services; MongoDB lưu dữ liệu; Memcached làm cache; Consul tìm service.
+- **Các bước:** build image → deploy databases/Consul/Jaeger → deploy services → kiểm tra containers/pods → chạy `wrk2`.
+
+```bash
+docker compose up -d --build
+docker compose ps
+kubectl apply -Rf hotelReservation/kubernetes/
+kubectl get pods,svc
+```
+
+- **Bản in:** kết quả `wrk2`, trạng thái container/pod và lệnh deploy.
 
 ---
 
@@ -59,12 +89,44 @@
 ### Đáp án cốt lõi
 
 - **Core:** logic view cho biết service nào làm gì; process view cho biết một use case chạy theo thứ tự nào.
-- **Logic view:** `Web → Gateway → [Auth Service | Document Service | Search Service]`; `Document Service → Kafka → Index Worker`.
-- **Công cụ:** React cho Web; FastAPI cho service; Kafka cho message; PostgreSQL/Pinecone cho dữ liệu.
-- **Giao tiếp:** REST/gRPC khi cần kết quả ngay; Kafka khi xử lý nền; không đọc trực tiếp DB của service khác.
-- **Process upload:** `File + token → Gateway → Document Service → lưu metadata → phát event → Worker xử lý → lưu kết quả`.
-- **Output:** API trả `document_id`; cuối cùng tài liệu có trạng thái `indexed`.
-- **Bản in:** cây source, lệnh cài/build và request/response.
+
+```mermaid
+flowchart LR
+    C[Client] -->|HTTP| F[Frontend]
+    F -->|gRPC| S[Search]
+    F -->|gRPC| P[Profile]
+    F -->|gRPC| U[User]
+    F -->|gRPC| R[Reservation]
+    F -->|gRPC| REC[Recommendation]
+    S -->|gRPC| G[Geo]
+    S -->|gRPC| RATE[Rate]
+```
+
+- **Công cụ:** Go cho services; protobuf định nghĩa interface; gRPC truyền request/response; Consul tìm địa chỉ và cân bằng giữa instances.
+- **Giao tiếp:** Frontend nhận HTTP rồi gọi đồng bộ các service bằng gRPC.
+
+**Process view: đặt phòng**
+
+```mermaid
+sequenceDiagram
+    actor Client
+    participant F as Frontend
+    participant U as User Service
+    participant R as Reservation Service
+    participant DB as MongoDB/Memcached
+    Client->>F: HTTP reserve request
+    F->>F: kiểm tra ngày, hotelId, username
+    F->>U: gRPC CheckUser
+    U-->>F: đúng/sai
+    F->>R: gRPC MakeReservation
+    R->>DB: kiểm tra phòng và lưu reservation
+    DB-->>R: kết quả
+    R-->>F: success/failure
+    F-->>Client: HTTP response
+```
+
+- **Input:** ngày, hotel ID, số phòng và tài khoản. **Output:** đặt phòng thành công/thất bại.
+- **Bản in:** cây `services/`, lệnh build và request/response đặt phòng.
 
 ---
 
@@ -80,13 +142,39 @@
 
 ### Đáp án cốt lõi
 
-- **Core bảo mật:** chỉ đúng người và đúng quyền mới truy cập được tài nguyên.
-- **Security view:** `User --HTTPS/JWT→ Gateway → Services → Database`; Secret Manager và Audit Log hỗ trợ hệ thống.
-- **Công cụ:** Nginx/Kong cho TLS; Keycloak/Auth0 cho JWT; middleware kiểm quyền; Kubernetes Secret giữ khóa.
-- **Core mở rộng:** Load Balancer chia request cho nhiều replica; Kafka chia event theo partition cho nhiều worker.
-- **Scalability view:** `Load Balancer → [API pod 1 | pod 2 | pod N]`; `Kafka partitions → worker group`.
-- **Công cụ/cách làm:** Locust tạo tải; Prometheus tìm điểm nghẽn; HPA/`kubectl scale` tăng replica; chạy lại cùng tải để so latency/throughput.
-- **Bản in:** cấu hình đã che secret, lệnh HPA/scale và số pod trước-sau.
+**Security view**
+
+```mermaid
+flowchart LR
+    C[Client] -->|HTTPS/TLS| F[Frontend]
+    F -->|gRPC + TLS| U[User Service]
+    F -->|gRPC + TLS| R[Reservation Service]
+    U -->|kiểm tra username/password| DB[(User MongoDB)]
+```
+
+- Biến `TLS` bật mã hóa HTTP và gRPC. User Service thực hiện authentication cơ bản.
+- Hệ production nên bổ sung token và authorization; không khẳng định repo đã có nếu chưa cài.
+
+**Scalability view**
+
+```mermaid
+flowchart LR
+    KS[Kubernetes Service] --> P1[Search pod 1]
+    KS --> P2[Search pod 2]
+    KS --> P3[Search pod 3]
+    P1 --> DB[(MongoDB / Memcached)]
+    P2 --> DB
+    P3 --> DB
+```
+
+- **Công cụ/cách làm:** `wrk2` tạo tải → `kubectl scale` tăng replica → chạy lại cùng workload → so latency/throughput.
+
+```bash
+TLS=1 docker compose up -d
+kubectl scale deployment hotel-reserv-search --replicas=3
+```
+
+- **Bản in:** cấu hình TLS, lệnh scale và số pod trước/sau.
 
 ---
 
@@ -101,11 +189,21 @@
 ### Đáp án cốt lõi
 
 - **Core:** log mô tả việc xảy ra trong một service; trace nối toàn bộ đường đi của một request.
-- **View:** `Gateway → Service A → Service B → OpenTelemetry Collector → [Loki | Jaeger | Prometheus] → Grafana`.
-- **Công cụ:** OpenTelemetry tạo/gửi dữ liệu; Loki lưu log; Jaeger lưu trace; Prometheus/Grafana hiển thị metric.
-- **Cách làm:** tạo `trace_id` → truyền qua các service → log kèm `trace_id` → gửi về Collector → tìm log và trace trên dashboard.
+
+```mermaid
+flowchart LR
+    C[Client] --> F[Frontend]
+    F --> S[Search]
+    S --> G[Geo]
+    S --> R[Rate]
+    F & S & G & R -. spans .-> J[Jaeger]
+    F & S & G & R -. logs .-> L[docker compose logs]
+```
+
+- **Công cụ:** OpenTracing gRPC interceptors tạo spans; Jaeger lưu/hiển thị trace; service logger tạo logs.
+- **Cách làm:** đặt `JAEGER_SAMPLE_RATIO` và `LOG_LEVEL` → gửi search request → mở Jaeger xem Frontend → Search → Geo/Rate → đối chiếu service logs.
 - **Không log:** password, token và dữ liệu nhạy cảm.
-- **Bản in:** lệnh xem log, log có `trace_id`, giao diện Jaeger/Grafana.
+- **Bản in:** `docker compose logs <service>` và một trace trên Jaeger.
 
 ---
 
@@ -124,14 +222,41 @@
 ### Đáp án cốt lõi
 
 - **Core:** tách source và dữ liệu theo service để thay đổi một phần ít ảnh hưởng phần khác.
-- **Development view:** `services/auth/`, `services/document/`, `services/search/`, `services/worker/`, `tests/`, `deploy/`; mỗi thư mục chứa đúng service/test/cấu hình tương ứng.
-- **Ví dụ mở rộng:** thêm Notification Service nhận event `DocumentIndexed`.
-- **Các bước:** định nghĩa event → tạo service mới → unit test → integration test Kafka → E2E → build/deploy riêng.
-- **Storage view:** `User 1—N Document 1—N Chunk`; PostgreSQL lưu metadata; Pinecone lưu vector; Outbox lưu event chờ gửi.
-- **Mục đích:** User là chủ sở hữu; Document là tài liệu; Chunk là đoạn; Vector dùng tìm kiếm; Outbox tránh mất event.
-- **Bản in:** cây thư mục, sơ đồ dữ liệu và lệnh build/test service mới.
+
+```text
+hotelReservation/
+├── services/       # source của frontend, search, geo, rate, ...
+├── cmd/            # entry point khởi động service
+├── dialer/         # kết nối gRPC
+├── registry/       # Consul service discovery
+├── tls/            # cấu hình TLS
+├── tracing/        # cấu hình Jaeger
+├── kubernetes/     # manifests
+└── helm-chart/     # Helm deployment
+```
+
+- **Ví dụ mở rộng:** thêm Loyalty Service → định nghĩa protobuf → viết server → đăng ký Consul → thêm Compose/Kubernetes config → unit/integration/E2E test.
+
+```mermaid
+flowchart TB
+    GEO[Geo Service] --> GDB[(Geo MongoDB)]
+    PROFILE[Profile Service] --> PDB[(Profile MongoDB)]
+    PROFILE --> PC[(Profile Memcached)]
+    RATE[Rate Service] --> RDB[(Rate MongoDB)]
+    RATE --> RC[(Rate Memcached)]
+    USER[User Service] --> UDB[(User MongoDB)]
+    RES[Reservation Service] --> RESDB[(Reservation MongoDB)]
+    RES --> RESC[(Reservation Memcached)]
+```
+
+- MongoDB lưu dữ liệu bền vững; Memcached cache dữ liệu đọc thường xuyên để giảm latency.
+- **Bản in:** cây thư mục, sơ đồ storage và lệnh build/test service mới.
 
 ---
+
+# Topic 2 — Kiến trúc frontend (câu 6–8)
+
+**Lý thuyết chung:** Micro-Frontend chia giao diện thành các phần được ghép bởi App Shell; JAMstack tạo sẵn HTML khi build và phân phối qua CDN, còn dữ liệu động đến từ API.
 
 ## Câu 6 — Micro-Frontends: chất lượng, logic, kết hợp và giao tiếp
 
@@ -205,6 +330,10 @@
 - **Bản in:** giao diện, cây source và kết quả build.
 
 ---
+
+# Topic 3 — Kiến trúc AI (câu 9–12)
+
+**Lý thuyết chung:** RAG tìm tài liệu liên quan rồi đưa vào context cho LLM; Agent dùng LLM để chọn và gọi tool theo nhiều bước.
 
 ## Câu 9 — RAG: chất lượng và logic
 
@@ -296,6 +425,10 @@
 
 ---
 
+# Topic 4 — Event Sourcing (câu 13–16)
+
+**Lý thuyết chung:** Event Store giữ chuỗi event bất biến làm dữ liệu gốc; projector replay event để tạo trạng thái/read model phục vụ truy vấn.
+
 ## Câu 13 — Event Sourcing: chất lượng và logic
 
 ### Đề bài rút gọn
@@ -385,6 +518,10 @@
 
 ---
 
+# Topic 5 — Event-Driven Architecture (câu 17–20)
+
+**Lý thuyết chung:** producer phát event, broker trung chuyển, consumer xử lý. Hệ thống giảm coupling nhưng phải xử lý duplicate, retry, DLQ và eventual consistency.
+
 ## Câu 17 — Event-Driven: chất lượng và logic
 
 ### Đề bài rút gọn
@@ -473,6 +610,10 @@
 
 ---
 
+# Topic 6 — Kappa Architecture (câu 21–22)
+
+**Lý thuyết chung:** event được giữ trong Kafka log; stream processor xử lý liên tục và ghi kết quả vào Serving DB. Khi cần tính lại, replay log qua processor.
+
 ## Câu 21 — Lambda hoặc Kappa: chất lượng và logic
 
 ### Đề bài rút gọn
@@ -488,14 +629,24 @@
 ### Đáp án cốt lõi
 
 - **Core:** Kappa dùng một stream pipeline; muốn tính lại thì replay event log.
-- **Khi dùng:** dữ liệu đến liên tục, báo cáo gần thời gian thực và event log được giữ đủ lâu để replay.
-- **Trade-offs:** chỉ một stream pipeline và hỗ trợ replay, nhưng phụ thuộc retention/checkpoint và khó xử lý event đến trễ, sai thứ tự hoặc logic stream phức tạp.
-- **Near real time — Công cụ:** Kafka/Flink metrics; **cách đo:** event-to-report latency và lag.
-- **Scalability — Công cụ:** Locust + Kafka/Flink; **cách đo:** events/giây trước/sau khi tăng partition/parallelism.
-- **Fault tolerance — Công cụ:** checkpoint + Docker/Kubernetes; **cách đo:** restart processor mà không mất/trùng kết quả.
-- **Replay/recovery — Công cụ:** consumer group mới + SQL; **cách đo:** replay vào DB mới cho count/sum đúng.
-- **Correctness — Công cụ:** tập event chuẩn; **cách đo:** aggregate cuối đúng kể cả duplicate/out-of-order.
-- **Logic view:** `Data source → Kafka log → Flink/Kafka Streams → Serving DB → Report API/Dashboard`.
+
+```mermaid
+flowchart LR
+    S[Data source] --> K[(Kafka log)]
+    K --> F[Flink / Kafka Streams]
+    F --> DB[(Serving DB)]
+    DB --> API[Report API]
+    API --> UI[Dashboard]
+```
+
+| Chất lượng | Công cụ và cách đo |
+|---|---|
+| Near real time | Kafka/Flink metrics: event-to-report latency và lag |
+| Scalability | Locust + Kafka/Flink: events/giây trước/sau khi tăng partition/parallelism |
+| Fault tolerance | Checkpoint + Docker/Kubernetes: restart mà không mất/trùng kết quả |
+| Replay/recovery | Consumer group mới + SQL: replay vào DB mới, `count/sum` đúng |
+| Correctness | Tập event chuẩn: aggregate đúng với duplicate/out-of-order |
+
 - **Bản in:** giao diện nhập, Kafka UI, cây source và dashboard lag.
 
 ---
@@ -513,7 +664,24 @@
 ### Đáp án cốt lõi
 
 - **Core:** stream processor tính sẵn số liệu; Report API chỉ đọc Serving DB.
-- **Process view:** `Raw events → Kafka → Flink Processor --SQL→ PostgreSQL Serving DB`; `User --REST→ Report API --SQL→ Serving DB → Chart/Table`.
+
+```mermaid
+sequenceDiagram
+    participant S as Data source
+    participant K as Kafka
+    participant F as Flink processor
+    participant DB as Serving DB
+    actor U as User
+    participant API as Report API
+    S->>K: raw event
+    K->>F: đọc event
+    F->>DB: cập nhật aggregate
+    U->>API: yêu cầu báo cáo
+    API->>DB: query aggregate
+    DB-->>API: kết quả
+    API-->>U: chart/table
+```
+
 - **Input:** event dữ liệu; yêu cầu báo cáo gồm user và khoảng ngày.
 - **Xử lý:** validate/deduplicate → tính tổng theo ngày → lưu aggregate/checkpoint → API kiểm quyền và query.
 - **Output:** bảng/biểu đồ và thời điểm cập nhật cuối.
