@@ -8,79 +8,86 @@ Các câu có hỏi đặc tính chất lượng: **1, 6, 8, 9, 11, 13, 17, 21**
 
 Công thức trả lời mỗi đặc tính:
 
-> **Tên quality → công cụ → cách đo cụ thể**
+> **Tên quality → công cụ → các bước kiểm tra → metric/kết quả mong đợi**
+
+Bốn bước dùng lại cho mọi quality:
+
+1. **Chuẩn bị:** chọn input/workload và ghi baseline hoặc kết quả mong đợi.
+2. **Thực hiện:** chạy test hoặc tạo tình huống cần kiểm tra.
+3. **Quan sát:** thu metric, log, trace hoặc output.
+4. **Kết luận:** so với baseline/ngưỡng/kết quả đúng.
 
 ### Câu 1 — Microservices: nhớ **Nhanh – Scale – Sống – Deploy**
 
-| Quality | Công cụ | Đo thế nào? |
+| Quality | Công cụ | Các bước kiểm tra cụ thể |
 |---|---|---|
-| Performance | `wrk2`/Locust | p95 latency, request/giây, error rate |
-| Scalability | Load test + Kubernetes | Cùng tải, so trước/sau khi tăng replica |
-| Availability | Xóa một pod | Số request lỗi, thời gian phục hồi |
-| Deployability | Docker/Kubernetes | Deploy một service mà service khác vẫn chạy |
+| Performance | `wrk2`/Locust | Chọn workload → chạy tải → lấy p95/RPS/error rate → so với ngưỡng |
+| Scalability | Load test + Kubernetes | Chạy tải với 1 replica → tăng replica → chạy lại cùng tải → throughput tăng/latency không xấu đi |
+| Availability | `kubectl delete pod` | Gửi request liên tục → xóa một pod → đo request lỗi/thời gian hồi phục → hệ thống vẫn phục vụ |
+| Deployability | Docker/Kubernetes | Ghi version hiện tại → deploy riêng một service → kiểm tra service khác → chúng không phải deploy lại |
 
 ### Câu 6 — Micro-Frontends: nhớ **Deploy – Cô lập – Nhanh – Đồng bộ**
 
-| Quality | Công cụ | Đo thế nào? |
+| Quality | Công cụ | Các bước kiểm tra cụ thể |
 |---|---|---|
-| Deployability | CI/CD | Deploy một MFE, MFE khác không build lại |
-| Fault isolation | Playwright/DevTools | Tắt một MFE, Shell và phần khác vẫn chạy |
-| Performance | Lighthouse | LCP, INP, kích thước JavaScript |
-| UI consistency | Storybook/visual test | Các MFE không lệch design system |
+| Deployability | CI/CD | Sửa một MFE → build/deploy riêng → mở hệ thống → MFE khác không build/deploy lại |
+| Fault isolation | Playwright/DevTools | Mở hệ thống → chặn/tắt một remote → reload → Shell và MFE khác vẫn dùng được |
+| Performance | Lighthouse | Chạy Lighthouse cùng cấu hình → lấy LCP/INP/bundle size → so với ngưỡng/baseline |
+| UI consistency | Storybook/visual test | Render các component → chụp visual snapshot → so với mẫu → không lệch design system |
 
 ### Câu 8 — JAMstack: nhớ **Nhanh – Scale – An toàn – Dễ deploy**
 
-| Quality | Công cụ | Đo thế nào? |
+| Quality | Công cụ | Các bước kiểm tra cụ thể |
 |---|---|---|
-| Performance | Lighthouse | LCP và TTFB thấp |
-| Scalability/availability | CDN + load test | Nhiều request, trang tĩnh vẫn trả nhanh |
-| Security | OWASP ZAP/secret scanner | Không có secret trong bundle, ít lỗi nghiêm trọng |
-| Deployability | GitHub Actions/Netlify | Thời gian commit → trang mới; rollback được |
+| Performance | Lighthouse | Build/deploy trang → chạy Lighthouse → lấy LCP/TTFB → so với ngưỡng |
+| Scalability/availability | CDN + load test | Chọn URL tĩnh → tăng số request → đo p95/error rate → CDN vẫn trả nhanh, ít lỗi |
+| Security | OWASP ZAP/secret scanner | Build bundle → scan bundle/site → xem cảnh báo → không có secret/lỗi nghiêm trọng |
+| Deployability | GitHub Actions/Netlify | Commit thay đổi → pipeline build/deploy → đo thời gian → kiểm tra trang mới và rollback |
 
 ### Câu 9 — RAG: nhớ **Tìm đúng – Nói đúng – Nhanh – Không lộ**
 
-| Quality | Công cụ | Đo thế nào? |
+| Quality | Công cụ | Các bước kiểm tra cụ thể |
 |---|---|---|
-| Retrieval relevance | Bộ câu hỏi chuẩn | Recall@k: top-k có chứa đoạn đúng không? |
-| Answer correctness | Đáp án/citation chuẩn | Câu trả lời đúng và citation thật sự hỗ trợ |
-| Performance | Locust/OpenTelemetry | p95 retrieval và end-to-end latency |
-| Security | Test hai tài khoản | User A không lấy được tài liệu của user B |
+| Retrieval relevance | Bộ câu hỏi chuẩn | Chuẩn bị câu hỏi + chunk đúng → retrieve top-k → kiểm tra chunk đúng → tính Recall@k |
+| Answer correctness | Đáp án/citation chuẩn | Hỏi bộ câu chuẩn → lưu answer/citation → đối chiếu đáp án/tài liệu → tính tỷ lệ đúng |
+| Performance | Locust/OpenTelemetry | Chọn tải → gửi query → đo retrieval và end-to-end latency → lấy p95/error rate |
+| Security | Test hai tài khoản | Nạp tài liệu riêng cho A/B → đăng nhập A → hỏi nội dung của B → hệ thống không trả chunk của B |
 
 ### Câu 11 — LLM Agent: nhớ **Làm đúng – An toàn – Biết dừng – Chịu lỗi**
 
-| Quality | Công cụ | Đo thế nào? |
+| Quality | Công cụ | Các bước kiểm tra cụ thể |
 |---|---|---|
-| Correctness | Bộ task chuẩn | Task success rate |
-| Safety | Permission/policy test | Tool thiếu quyền bị chặn hoặc xin approval |
-| Bounded execution | `max_steps`, timeout | Agent dừng đúng giới hạn |
-| Reliability | Mock tool lỗi | Retry hợp lý, không lặp side effect |
+| Correctness | Bộ task chuẩn | Chuẩn bị task + kết quả đúng → chạy agent → kiểm tra output/tool calls → tính task success rate |
+| Safety | Permission/policy test | Giao task gọi tool nhạy cảm → quan sát permission check → bị chặn hoặc xin approval |
+| Bounded execution | `max_steps`, timeout | Tạo task không thể hoàn thành → chạy agent → đếm bước/thời gian → dừng đúng giới hạn |
+| Reliability | Mock tool lỗi | Cho tool trả timeout/5xx → chạy agent → xem retry/log → phục hồi và không lặp side effect |
 
 ### Câu 13 — Event Sourcing: nhớ **Audit – Replay – Đúng – Nhanh**
 
-| Quality | Công cụ | Đo thế nào? |
+| Quality | Công cụ | Các bước kiểm tra cụ thể |
 |---|---|---|
-| Auditability | Event Store UI/SQL | Mọi thay đổi đều có event, không sửa event cũ |
-| Recoverability | Rebuild script | Replay tạo lại đúng trạng thái/read model |
-| Consistency | Test duplicate/version | Duplicate không xử lý hai lần; sai version bị từ chối |
-| Performance | Locust/Prometheus | Append/query p95 và projection lag |
+| Auditability | Event Store UI/SQL | Thực hiện vài command → mở event stream → đối chiếu từng thay đổi → đủ event, event cũ không bị sửa |
+| Recoverability | Rebuild script | Ghi baseline read model → xóa/tạo bảng mới → replay events → state/count bằng baseline |
+| Consistency | Test duplicate/version | Gửi duplicate và command sai version → đọc state/events → duplicate không đổi state, sai version bị từ chối |
+| Performance | Locust/Prometheus | Chọn tải command/query → chạy test → đo append/query p95 và projection lag → so ngưỡng |
 
 ### Câu 17 — Event-Driven: nhớ **Ít dính – Scale – Không mất – Không trùng**
 
-| Quality | Công cụ | Đo thế nào? |
+| Quality | Công cụ | Các bước kiểm tra cụ thể |
 |---|---|---|
-| Loose coupling | Contract test | Thêm consumer mà producer không đổi |
-| Scalability | Kafka + load test | Events/giây và lag trước/sau khi tăng consumer |
-| Reliability | Retry/DLQ | Lỗi tạm thời được retry; lỗi lâu vào DLQ |
-| Idempotency | Gửi cùng `eventId` hai lần | Kết quả chỉ thay đổi một lần |
+| Loose coupling | Contract test | Giữ nguyên producer → thêm consumer mới theo event contract → publish event → cả hai consumer hoạt động |
+| Scalability | Kafka + load test | Chạy với 1 consumer → đo throughput/lag → tăng partition/consumer → chạy lại cùng tải → so kết quả |
+| Reliability | Retry/DLQ | Làm consumer lỗi tạm thời/lâu dài → publish event → xem retry → lỗi tạm phục hồi, lỗi lâu vào DLQ |
+| Idempotency | Gửi cùng `eventId` hai lần | Publish duplicate → consumer xử lý → query kết quả → business state chỉ đổi một lần |
 
 ### Câu 21 — Kappa: nhớ **Gần real-time – Scale – Hồi phục – Đúng**
 
-| Quality | Công cụ | Đo thế nào? |
+| Quality | Công cụ | Các bước kiểm tra cụ thể |
 |---|---|---|
-| Near real-time | Kafka/Flink metrics | Event-to-report latency và consumer lag |
-| Scalability | Tăng partition/parallelism | So events/giây trước và sau |
-| Fault tolerance/replay | Checkpoint + consumer group mới | Restart/replay không mất hoặc trùng kết quả |
-| Correctness | Tập event chuẩn | Aggregate đúng với duplicate/out-of-order |
+| Near real-time | Kafka/Flink metrics | Ghi thời điểm event → gửi event → chờ report đổi → tính event-to-report latency và lag |
+| Scalability | Partition/parallelism | Chạy tải và ghi events/giây → tăng partition/parallelism → chạy lại cùng tải → throughput tăng/lag giảm |
+| Fault tolerance/replay | Checkpoint + consumer group mới | Ghi kết quả chuẩn → restart/replay vào DB mới → so count/sum → không mất/trùng |
+| Correctness | Tập event chuẩn | Chuẩn bị event kể cả duplicate/out-of-order → chạy pipeline → query aggregate → đúng kết quả tính tay |
 
 ---
 
@@ -305,7 +312,7 @@ Nhớ bốn cụm:
 ## 5. Khung viết A4 trong 10 phút
 
 1. Viết **định nghĩa một câu**.
-2. Nếu hỏi quality: viết đúng **4 dòng: quality → tool → metric**.
+2. Nếu hỏi quality: mỗi quality viết đủ **tool → các bước test → metric/kết quả mong đợi**.
 3. Vẽ sơ đồ lớn, khoảng 5–7 box; ghi công nghệ và giao thức ngay trên box/mũi tên.
 4. Viết các bước theo số `1 → 2 → 3 → 4`.
 5. Kết thúc bằng 1 lợi ích và 1 trade-off.

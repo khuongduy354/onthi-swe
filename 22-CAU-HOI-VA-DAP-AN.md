@@ -10,7 +10,7 @@
 - **Logic view:** chức năng/trách nhiệm → quan hệ → công nghệ/ngôn ngữ của từng thành phần.
 - **Deployment view:** node phần cứng/phần mềm → artifact/module → giao thức kết nối.
 - **Process view:** các process chạy lúc runtime → input/biến đổi/output → IPC/giao thức → concurrency nếu có.
-- **Quality:** mỗi đặc tính đi cùng công cụ, cách kiểm tra và metric.
+- **Quality:** mỗi đặc tính phải có công cụ và các bước: chuẩn bị input/baseline → thực hiện test → thu metric/output → so với ngưỡng/kết quả đúng.
 - **Bằng chứng:** chỉ nói điều đã thực hành; nộp đúng bản in giao diện/câu lệnh liên quan.
 - **Thời gian:** 10 phút viết A4 không dùng tài liệu → 2 phút chọn bản in → 5–10 phút vấn đáp.
 - **Chấm điểm:** giấy A4 trống/không liên quan là 0; trả lời thiếu hoặc thiếu bản in tối đa 8; đủ ý và đúng bản in được trên 8–10 điểm.
