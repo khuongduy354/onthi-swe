@@ -39,14 +39,15 @@ Performance vẫn cần quan sát khi test, nhưng không phải lợi ích tự
 
 Performance và UI consistency là trade-off cần kiểm soát, nhưng điểm phân biệt nhất của MFE là các phần có thể đổi/deploy độc lập.
 
-### Câu 8 — JAMstack: nhớ **Nhanh – Scale – An toàn – Dễ deploy**
+### Câu 8 — JAMstack: nhớ **Nhanh – Scale – Dễ deploy**
 
 | Quality | Công cụ | Các bước kiểm tra cụ thể |
 |---|---|---|
 | Performance | Lighthouse | Build/deploy trang → chạy Lighthouse → lấy LCP/TTFB → so với ngưỡng |
 | Scalability/availability | CDN + load test | Chọn URL tĩnh → tăng số request → đo p95/error rate → CDN vẫn trả nhanh, ít lỗi |
-| Security | OWASP ZAP/secret scanner | Build bundle → scan bundle/site → xem cảnh báo → không có secret/lỗi nghiêm trọng |
 | Deployability | GitHub Actions/Netlify | Commit thay đổi → pipeline build/deploy → đo thời gian → kiểm tra trang mới và rollback |
+
+Security chỉ là lợi ích phụ: static hosting làm giảm bề mặt tấn công, nhưng JavaScript/API vẫn phải bảo vệ như bình thường.
 
 ### Câu 9 — RAG: nhớ **Tìm đúng – Nói có căn cứ – Kiến thức mới**
 

@@ -331,7 +331,7 @@ flowchart TB
 - **Performance — Công cụ:** Lighthouse; **cách đo:** LCP và TTFB.
 - **Scalability — Công cụ:** k6/Locust; **cách đo:** request/giây, p95 và error rate của URL CDN.
 - **Availability — Công cụ:** Playwright/curl; **cách đo:** tắt API, trang tĩnh vẫn trả `200` và có fallback.
-- **Security — Công cụ:** OWASP ZAP/secret scanner; **cách đo:** không có lỗi nghiêm trọng hoặc secret trong bundle.
+- **Có thể nêu thêm Security:** static hosting giảm bề mặt tấn công, nhưng vẫn phải scan JavaScript/API và không để secret trong bundle. Đây không phải quality bắt buộc phải chọn.
 - **Deployability — Công cụ:** GitHub Actions/Netlify; **cách đo:** thời gian từ commit đến trang mới và khả năng rollback.
 - **Logic view:** `Git/CMS → Next.js/Astro build → HTML/CSS/JS → CDN → Browser → API`.
 - **Bản in đúng theo đề:** giao diện hệ thống và cây thư mục mã nguồn.
