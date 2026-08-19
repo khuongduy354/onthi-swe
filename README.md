@@ -2,6 +2,7 @@
 
 - **Đề gốc:** [PDF 22 câu hỏi vấn đáp](materials/22-cau-hoi-thi-kien-truc-phan-mem.pdf) — GV. TS. Ngô Huy Biên, 2026.
 - **Tài liệu chính:** [22 câu hỏi rút gọn kèm đáp án](22-CAU-HOI-VA-DAP-AN.md).
+- **Cheat sheet nhớ nhanh:** [Core và quality attributes của 22 câu](CHEATSHEET-NHO-NHANH.md).
 - **Bộ bản in:** [Bản in nộp kèm cho 22 câu](BAN-IN-NOP-KEM-22-CAU.md).
 - **Demo chạy thật câu 4 và 20:** [Observability demo](observability-demo/README.md).
 - Bản dưới đây chỉ **viết lại đề thi** thành các bullet ngắn gọn; không thêm nội dung trả lời.
