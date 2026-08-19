@@ -78,6 +78,21 @@ App Shell tải và ghép ba UI fragment lúc runtime:
 
 ![App Shell tổng hợp ba Micro-Frontend](print-artifacts-demo/screenshots/cau-06-composed-shell.png)
 
+Cấu trúc thể hiện Shell, các remote độc lập và phần dùng chung:
+
+```text
+microfrontends/
+├── app-shell/
+│   ├── remote-manifest.json
+│   └── shell.js
+├── remotes/
+│   ├── account/index.html
+│   ├── search/index.html
+│   └── report/index.html
+└── shared/
+    └── design-tokens.css
+```
+
 ## Câu 7 — Triển khai Micro-Frontends
 
 ```bash
@@ -97,9 +112,11 @@ Cây mã nguồn thật:
 
 ```text
 jamstack/
-├── build.py
-└── dist/
-    └── index.html
+├── src/
+│   ├── content/site.json
+│   └── pages/index.html
+├── scripts/build.py
+└── dist/index.html
 ```
 
 ## Câu 9 — RAG
@@ -112,9 +129,23 @@ Cây mã nguồn thật:
 
 ```text
 rag/
-└── retriever.py       # tokenize, score top-k, answer + citations
-server.py              # route /rag và giao diện HTTP
+├── data/
+│   └── documents.py
+├── ingestion/
+│   ├── chunker.py
+│   ├── embedder.py
+│   └── indexer.py
+├── infrastructure/
+│   └── vector_store.py
+├── retrieval/
+│   ├── tokenizer.py
+│   └── retriever.py
+└── generation/
+    ├── prompt_builder.py
+    └── answer_service.py
 ```
+
+Demo offline dùng embedding/retrieval xác định và answer mẫu có citation; `answer_service.py` là boundary để thay bằng LLM API khi có model/key.
 
 ## Câu 10 — Triển khai RAG
 
@@ -137,8 +168,20 @@ Cây mã nguồn thật:
 
 ```text
 agent/
-└── agent.py           # planner, tools và agent loop
-server.py              # route /agent và giao diện HTTP
+├── models/
+│   ├── mock_llm.py       # planner offline
+│   └── ollama_client.py  # adapter cho model thật
+├── core/
+│   ├── state.py          # task, max_steps, steps, answer
+│   └── executor.py       # agent loop
+├── tools/
+│   ├── inventory.py
+│   ├── pricing.py
+│   └── registry.py       # tool name → function
+├── memory/
+│   └── checkpoint_store.py
+└── policies/
+    └── permissions.py    # allow/deny tool call
 ```
 
 Lưu ý trung thực: demo offline dùng `MockLLMPlanner`; tools và agent loop chạy thật. Khi có API key/model local, thay planner bằng LLM mà không đổi tool contracts.
@@ -164,8 +207,16 @@ Cây mã nguồn thật:
 
 ```text
 event_sourcing/
-└── model.py           # append-only EVENTS và hàm project()
-server.py              # command route, query route và UI
+├── domain/
+│   ├── events.py
+│   └── student.py        # apply event vào aggregate state
+├── application/
+│   ├── command_service.py
+│   └── query_service.py
+├── infrastructure/
+│   └── event_store.py    # append/read immutable events
+└── projections/
+    └── student_projector.py
 ```
 
 ## Câu 14 — Triển khai Event Sourcing
@@ -181,7 +232,7 @@ curl http://localhost:8090/event-sourcing/list
 
 ## Câu 15 — Danh sách Event Sourcing
 
-Danh sách được đọc từ kết quả `project()`, không replay trong giao diện:
+Danh sách được đọc qua `query_service → project_students()`, không replay trực tiếp trong giao diện:
 
 ![Danh sách từ Event Sourcing Read Model](print-artifacts-demo/screenshots/cau-15-event-sourcing-list.png)
 
@@ -199,8 +250,15 @@ Cây mã nguồn thật:
 
 ```text
 event_driven/
-└── broker.py          # event log, publish(), consume(), deduplicate
-server.py              # producer input route và UI
+├── contracts/
+│   └── events.py         # ReservationCreated schema
+├── producers/
+│   └── reservation.py
+├── infrastructure/
+│   ├── in_memory_broker.py
+│   └── dead_letter_queue.py
+└── consumers/
+    └── notification.py   # idempotent handler
 ```
 
 ## Câu 18 — Triển khai Event-Driven
@@ -248,8 +306,16 @@ Cây mã nguồn thật:
 
 ```text
 kappa/
-└── pipeline.py        # RAW_EVENTS, deduplicate và aggregate
-server.py              # input, report và raw-data routes
+├── producer/
+│   └── input_service.py
+├── storage/
+│   ├── checkpoint_store.py
+│   ├── event_log.py      # durable raw events + replay
+│   └── serving_db.py     # materialized report rows
+├── stream/
+│   └── processor.py      # validate/deduplicate/aggregate
+└── api/
+    └── report_service.py
 ```
 
 ## Câu 22 — Báo cáo Kappa

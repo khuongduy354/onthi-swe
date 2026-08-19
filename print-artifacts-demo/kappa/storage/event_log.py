@@ -11,11 +11,6 @@ def append(event):
         RAW_EVENTS.append(event)
 
 
-def aggregate():
-    result = {}
-    for event in RAW_EVENTS:
-        row = result.setdefault(event["category"], {"category": event["category"], "count": 0, "sum": 0})
-        row["count"] += 1
-        row["sum"] += event["amount"]
-    return list(result.values())
+def replay():
+    return list(RAW_EVENTS)
 

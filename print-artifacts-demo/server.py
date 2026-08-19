@@ -1,15 +1,18 @@
 import html
-import json
-import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from agent.agent import run as run_agent
-from event_driven.broker import EVENT_LOG, PROCESSED, publish
-from event_sourcing.model import EVENTS, append as append_event, project
-from kappa.pipeline import RAW_EVENTS, aggregate, append as append_stream
-from rag.retriever import answer as rag_answer
+from agent.core.executor import run as run_agent
+from event_driven.consumers.notification import PROCESSED
+from event_driven.producers.reservation import publish_reservation
+from event_sourcing.application.command_service import add_student
+from event_sourcing.infrastructure.event_store import EVENTS
+from event_sourcing.application.query_service import list_students
+from kappa.api.report_service import get_report
+from kappa.producer.input_service import submit as submit_stream_event
+from kappa.storage.event_log import RAW_EVENTS
+from rag.generation.answer_service import answer as rag_answer
 
 ROOT = Path(__file__).parent
 
@@ -41,9 +44,12 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/static/styles.css":
             data = (ROOT / "static/styles.css").read_bytes()
             self.send_response(200); self.send_header("Content-Type", "text/css"); self.end_headers(); self.wfile.write(data); return
+        if path == "/microfrontends/shell.js":
+            data = (ROOT / "microfrontends/app-shell/shell.js").read_bytes()
+            self.send_response(200); self.send_header("Content-Type", "text/javascript"); self.end_headers(); self.wfile.write(data); return
         if path.startswith("/fragments/"):
-            name = Path(path).name
-            body = (ROOT / "microfrontends" / name).read_text()
+            name = Path(path).stem
+            body = (ROOT / "microfrontends/remotes" / name / "index.html").read_text()
             self.send_html(body); return
         routes = {
             "/": self.home,
@@ -69,13 +75,13 @@ class Handler(BaseHTTPRequestHandler):
         form = parse_qs(self.rfile.read(size).decode())
         path = urlparse(self.path).path
         if path == "/event-sourcing/input":
-            append_event("StudentAdded", {"id": form.get("id", ["SV002"])[0], "name": form.get("name", ["Student"])[0]})
+            add_student(form.get("id", ["SV002"])[0], form.get("name", ["Student"])[0])
             self.redirect("/event-sourcing/list"); return
         if path == "/event-driven/input":
-            publish({"eventId": str(uuid.uuid4())[:8], "type": "ReservationCreated", "hotelId": form.get("hotelId", ["H01"])[0]})
+            publish_reservation(form.get("hotelId", ["H01"])[0])
             self.redirect("/event-driven/input"); return
         if path == "/kappa/input":
-            append_stream({"eventId": str(uuid.uuid4())[:8], "category": form.get("category", ["Hotel"])[0], "amount": int(form.get("amount", ["100"])[0]), "time": "now"})
+            submit_stream_event(form.get("category", ["Hotel"])[0], int(form.get("amount", ["100"])[0]))
             self.redirect("/kappa/report"); return
         self.send_html("not found", 404)
 
@@ -88,13 +94,13 @@ class Handler(BaseHTTPRequestHandler):
         return layout("Architecture demos", "Small examples used to produce exam print artifacts.", content)
 
     def mfe_single(self, name):
-        fragment = (ROOT / "microfrontends" / f"{name}.html").read_text()
+        fragment = (ROOT / "microfrontends/remotes" / name / "index.html").read_text()
         return layout(f"{name.title()} Micro-Frontend", "This interface can run and be deployed independently.", fragment)
 
     def mfe_shell(self):
         content = """<div class='flow'><span class='node'>App Shell</span><span class='arrow'>loads →</span><span class='node'>Independent UI fragments</span></div>
         <div class='grid'><div id='account'></div><div id='search'></div><div id='report'></div></div>
-        <script>for (const n of ['account','search','report']) fetch('/fragments/'+n+'.html').then(r=>r.text()).then(x=>document.getElementById(n).innerHTML=x)</script>"""
+        <script src='/microfrontends/shell.js'></script>"""
         return layout("Composed Micro-Frontend system", "App Shell composes three independently owned interface fragments at runtime.", content)
 
     def jamstack(self):
@@ -120,7 +126,7 @@ class Handler(BaseHTTPRequestHandler):
         return layout("Event Sourcing — input", "A command appends an immutable event; a projector rebuilds the read model.", content)
 
     def es_list(self):
-        rows = [[x["id"], x["name"], x["score"] if x["score"] is not None else "—"] for x in project()]
+        rows = [[x["id"], x["name"], x["score"] if x["score"] is not None else "—"] for x in list_students()]
         return layout("Event Sourcing — student list", "Query reads the projected Read Model, not the Event Store.", table(["Student ID", "Name", "Architecture score"], rows))
 
     def eda_input(self):
@@ -136,8 +142,9 @@ class Handler(BaseHTTPRequestHandler):
         return layout("Kappa — event input", "New data enters the same durable stream used for replay.", content)
 
     def kappa_report(self):
-        rows = [[x["category"], x["count"], f"${x['sum']}"] for x in aggregate()]
-        cards = "<div class='grid'>" + "".join(f"<div class='card'><span class='tag'>{x['category']}</span><div class='metric'>${x['sum']}</div><p>{x['count']} events</p></div>" for x in aggregate()) + "</div>"
+        report = get_report()
+        rows = [[x["category"], x["count"], f"${x['sum']}"] for x in report]
+        cards = "<div class='grid'>" + "".join(f"<div class='card'><span class='tag'>{x['category']}</span><div class='metric'>${x['sum']}</div><p>{x['count']} events</p></div>" for x in report) + "</div>"
         return layout("Kappa — near-real-time report", "Stream processor deduplicates and aggregates; Report API reads the Serving DB.", cards + "<br>" + table(["Category", "Count", "Total"], rows))
 
     def kappa_raw(self):
@@ -152,4 +159,3 @@ if __name__ == "__main__":
     server = ThreadingHTTPServer(("0.0.0.0", 8090), Handler)
     print("Demo running at http://localhost:8090")
     server.serve_forever()
-
