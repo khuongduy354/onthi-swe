@@ -288,6 +288,17 @@ flowchart TB
 - **Consistency — Công cụ:** Storybook visual test; **cách đo:** giao diện không lệch thiết kế chuẩn.
 - **Testability — Công cụ:** Vitest/Playwright; **cách đo:** component test và E2E pass.
 - **Logic view:** `Browser → App Shell → [Account MFE | Search MFE | Report MFE] → Backend API`.
+
+```mermaid
+flowchart LR
+    B[Browser] --> S[App Shell<br/>React + Module Federation]
+    S --> A[Account MFE]
+    S --> SE[Search MFE]
+    S --> R[Report MFE]
+    A & SE & R -->|HTTPS/REST| API[Backend API]
+    A & SE & R <-. props, router, events .-> S
+```
+
 - **Kết hợp:** Shell tải MFE bằng Module Federation và đặt vào route/layout.
 - **Giao tiếp:** props/callback, URL/router hoặc event bus; tránh dùng chung global state lớn.
 - **Bản in:** từng MFE và giao diện tổng hợp.
@@ -307,6 +318,18 @@ flowchart TB
 
 - **Core:** mỗi MFE được build/deploy riêng; browser tải chúng vào App Shell.
 - **Deployment view:** `Repo MFE → CI build → CDN`; `Browser --HTTPS→ Shell/CDN → remoteEntry.js --HTTPS→ Backend API`.
+
+```mermaid
+flowchart TB
+    RS[Shell repository] -->|CI build| CS[Shell artifact on CDN]
+    RA[Account MFE repository] -->|CI build| CA[Account remote on CDN]
+    RR[Report MFE repository] -->|CI build| CR[Report remote on CDN]
+    B[Browser] -->|HTTPS| CS
+    B -->|HTTPS remoteEntry.js| CA
+    B -->|HTTPS remoteEntry.js| CR
+    B -->|HTTPS/REST| API[Backend API container]
+```
+
 - **Công cụ:** GitHub Actions, npm/Vite/Webpack, Module Federation và Netlify/Vercel/CDN.
 - **Các bước:** test/build từng MFE → upload artifact có version → cập nhật manifest của Shell → E2E → phát hành → rollback manifest nếu lỗi.
 - **Bản in đúng theo đề:** một số câu lệnh cần thiết để triển khai hệ thống.
@@ -334,6 +357,16 @@ flowchart TB
 - **Có thể nêu thêm Security:** static hosting giảm bề mặt tấn công, nhưng vẫn phải scan JavaScript/API và không để secret trong bundle. Đây không phải quality bắt buộc phải chọn.
 - **Deployability — Công cụ:** GitHub Actions/Netlify; **cách đo:** thời gian từ commit đến trang mới và khả năng rollback.
 - **Logic view:** `Git/CMS → Next.js/Astro build → HTML/CSS/JS → CDN → Browser → API`.
+
+```mermaid
+flowchart LR
+    G[Git / Headless CMS] --> B[Astro or Next.js build]
+    B --> A[Static HTML/CSS/JS]
+    A --> CDN[CDN]
+    CDN -->|HTTPS| U[Browser]
+    U -->|JavaScript + HTTPS| API[External API]
+```
+
 - **Bản in đúng theo đề:** giao diện hệ thống và cây thư mục mã nguồn.
 
 ---
@@ -363,6 +396,20 @@ flowchart TB
 - **Freshness — Công cụ:** worker log/vector DB UI; **cách đo:** thời gian từ khi thêm tài liệu đến khi tìm được.
 - **Security — Công cụ:** test bằng hai tài khoản; **cách đo:** user A không lấy được chunk của user B.
 - **Logic view:** `Documents → Chunk → Embedding → Vector DB`; `Question → Retrieve top-k → Prompt → LLM → Answer + citation`.
+
+```mermaid
+flowchart LR
+    D[Documents] --> C[Chunker]
+    C --> E[Embedding Model]
+    E --> V[(Vector DB)]
+    Q[User Question] --> API[RAG API]
+    API -->|similarity search| V
+    V -->|top-k chunks| P[Prompt Builder]
+    Q --> P
+    P --> L[LLM]
+    L --> O[Answer + Citations]
+```
+
 - **Công cụ cài đặt:** Python/LangChain, embedding/LLM API, Pinecone/FAISS, FastAPI và React.
 - **Bản in đúng theo đề:** giao diện hệ thống và cây thư mục mã nguồn.
 
@@ -381,6 +428,19 @@ flowchart TB
 
 - **Core:** tách indexing chạy nền khỏi query phục vụ người dùng.
 - **Deployment view:** `Browser --HTTPS→ Web --REST→ Query API --HTTPS→ [Vector DB | Embedding API | LLM API]`; `Documents → Worker → Vector DB`.
+
+```mermaid
+flowchart LR
+    B[Browser] -->|HTTPS| W[Web app<br/>Vercel/CDN]
+    W -->|REST| Q[Query API container]
+    Q -->|HTTPS| V[(Managed Vector DB)]
+    Q -->|HTTPS| EM[Embedding API]
+    Q -->|HTTPS| LLM[LLM API]
+    DOC[(Document Storage)] --> IW[Indexing Worker container]
+    IW -->|HTTPS| EM
+    IW -->|upsert vectors| V
+```
+
 - **Công cụ:** Docker/Kubernetes, Kafka/queue, Pinecone, LLM API và Kubernetes Secret.
 - **Các bước:** tạo vector index → cấu hình secret → build/deploy worker → index dữ liệu mẫu → deploy Query API/Web → hỏi thử và kiểm tra citation/log.
 - **Bản in đúng theo đề:** một số câu lệnh cần thiết **hoặc** giao diện công cụ trực tuyến dùng để triển khai.
@@ -408,6 +468,20 @@ flowchart TB
 - **Reliability — Công cụ:** mock tool; **cách đo:** tool timeout/5xx được retry và không lặp side effect.
 - **Modifiability — Công cụ:** contract test; **cách đo:** thêm tool mới mà không sửa core loop.
 - **Logic view:** `User → Agent → LLM → Permission Check → Tool → Result → Answer`; Memory/Checkpoint lưu trạng thái.
+
+```mermaid
+flowchart LR
+    U[User] --> A[Agent Controller]
+    A --> L[LLM<br/>choose next action]
+    L --> D{Finish or call tool?}
+    D -->|Finish| O[Final Answer]
+    D -->|Tool call| P[Permission Check]
+    P -->|Allowed| T[Tool]
+    T -->|Result| A
+    P -->|Denied| A
+    A <--> M[(Memory / Checkpoint)]
+```
+
 - **Công cụ cài đặt:** LangGraph/custom Python, LLM API, Pydantic tool schema, PostgreSQL/Redis và OpenTelemetry.
 - **Bản in đúng theo đề:** giao diện hệ thống và cây thư mục mã nguồn.
 
@@ -426,6 +500,20 @@ flowchart TB
 
 - **Core:** Agent API nhận task; worker chạy agent và gọi LLM/tools; DB lưu checkpoint.
 - **Deployment view:** `Client --HTTPS→ Gateway/Auth --REST→ Agent API → Queue → Worker --HTTPS→ [LLM | Tools]`; Worker → Checkpoint DB/Secrets/Logs.
+
+```mermaid
+flowchart LR
+    C[Client] -->|HTTPS| G[API Gateway / Auth]
+    G -->|REST| A[Agent API container]
+    A --> Q[(Task Queue)]
+    Q --> W[Agent Worker container]
+    W -->|HTTPS| L[LLM API]
+    W -->|HTTPS| T[Tool APIs]
+    W --> DB[(Checkpoint DB)]
+    W -. read .-> S[Secret Manager]
+    W -. traces .-> O[OpenTelemetry]
+```
+
 - **Công cụ:** FastAPI, Docker/Kubernetes, Temporal/Kafka, PostgreSQL, Vault/Secret và OpenTelemetry.
 - **Các bước:** định nghĩa tool/quyền → lưu secret → build/deploy API/worker/queue/DB → đặt max steps/timeout/retry → test staging → theo dõi rồi mở rộng.
 - **Bản in đúng theo đề:** một số câu lệnh cần thiết **hoặc** giao diện công cụ trực tuyến dùng để triển khai.
@@ -457,6 +545,18 @@ flowchart TB
 - **Performance — Công cụ:** Locust/Prometheus; **cách đo:** append p95, query p95 và projection lag.
 - **Consistency — Công cụ:** pytest; **cách đo:** duplicate chỉ xử lý một lần, sai `expected_version` bị từ chối.
 - **Logic view:** `Command API → Aggregate → Event Store → Projector → Read Model ← Query API`.
+
+```mermaid
+flowchart LR
+    UI[Web UI] -->|command| C[Command API]
+    C --> A[Aggregate<br/>validate business rules]
+    A -->|append event| ES[(Event Store)]
+    ES -->|event stream| P[Projector]
+    P -->|upsert| RM[(Read Model)]
+    UI -->|query| Q[Query API]
+    Q -->|read| RM
+```
+
 - **Công cụ cài đặt:** FastAPI, EventStoreDB/PostgreSQL và Python projector.
 - **Bản in đúng theo đề:** giao diện nhập dữ liệu và cây thư mục mã nguồn.
 
@@ -475,6 +575,18 @@ flowchart TB
 
 - **Core:** Command API ghi Event Store; Projector tạo Read Model; Query API đọc Read Model.
 - **Deployment view:** `Command API container --append→ Event Store`; `Event Store --subscription→ Projector container --SQL→ Read DB`; `Query API container --SQL→ Read DB`.
+
+```mermaid
+flowchart LR
+    B[Browser] -->|HTTPS| C[Command API container]
+    B -->|HTTPS| Q[Query API container]
+    C -->|TCP/HTTP append| ES[(EventStoreDB + Volume)]
+    ES -->|subscription| P[Projector container]
+    P -->|SQL upsert| R[(PostgreSQL Read DB)]
+    Q -->|SQL select| R
+    C & Q & P -. traces .-> O[OpenTelemetry]
+```
+
 - **Công cụ:** Docker/Kubernetes, EventStoreDB/PostgreSQL, volume/backup và OpenTelemetry.
 - **Các bước:** deploy Event Store → tạo schema → deploy Command API → deploy Read DB/Projector → replay → deploy Query API → kiểm tra end-to-end.
 - **Bản in đúng theo đề:** một số câu lệnh cần thiết **hoặc** giao diện công cụ trực tuyến dùng để triển khai.
@@ -527,8 +639,27 @@ flowchart LR
 
 - **Core:** Event Store là nguồn sự thật; Read Model là dữ liệu được tạo lại từ events.
 - **Storage view:** Event gồm `event_id`, `aggregate_id`, `version`, `type`, `payload`, `time`; Checkpoint lưu vị trí projector; Read Model lưu trạng thái hiện tại.
+
+```mermaid
+flowchart LR
+    C[Command API] --> ES[(Events<br/>event_id, aggregate_id,<br/>version, type, payload, time)]
+    ES --> P[Projector]
+    P --> CP[(Checkpoint<br/>projector_name, position)]
+    P --> RM[(Read Model<br/>current query state)]
+    Q[Query API] --> RM
+    ES -. optional snapshot .-> S[(Snapshots)]
+```
+
 - **Công cụ/cài đặt:** EventStoreDB/PostgreSQL + migration; tạo event table/constraint → checkpoint/read tables → projector.
 - **Luồng trạng thái:** `0 --Deposited(100)→ 100 --Withdrawn(30)→ 70`.
+
+```mermaid
+flowchart LR
+    S0[State = 0] -->|Deposited 100| S1[State = 100]
+    S1 -->|Withdrawn 30| S2[State = 70]
+    E[(Stored Events)] -->|replay in version order| S0
+```
+
 - **Tái tạo:** bắt đầu state rỗng/snapshot → đọc events đúng version → áp dụng tuần tự → nhận state cuối.
 - **Rebuild Read Model:** tạo bảng mới → replay toàn bộ → so count/state → chuyển Query API sang bảng mới.
 - **Công cụ tái tạo:** Event Store client, projector/rebuild script và DB viewer.
@@ -561,6 +692,18 @@ flowchart LR
 - **Reliability — Công cụ:** retry/DLQ dashboard; **cách đo:** lỗi tạm thời được retry, lỗi lâu vào DLQ.
 - **Idempotency — Công cụ:** pytest/DB query; **cách đo:** cùng `event_id` hai lần nhưng kết quả chỉ đổi một lần.
 - **Logic view:** `Producer API → Kafka → [Consumer A | Consumer B] → Databases`.
+
+```mermaid
+flowchart LR
+    UI[Input UI] -->|HTTPS| P[Producer API]
+    P -->|publish event| K[(Kafka Topic)]
+    K --> C1[Notification Consumer]
+    K --> C2[Analytics Consumer]
+    C1 --> D1[(Notification DB)]
+    C2 --> D2[(Analytics DB)]
+    C1 & C2 -. repeated failure .-> DLQ[(Dead Letter Topic)]
+```
+
 - **Công cụ cài đặt:** FastAPI, Kafka/RabbitMQ, Python consumer và PostgreSQL.
 - **Bản in đúng theo đề:** giao diện nhập dữ liệu và cây thư mục mã nguồn.
 
@@ -579,6 +722,19 @@ flowchart LR
 
 - **Core:** broker và mỗi producer/consumer chạy thành process/container riêng.
 - **Deployment view:** `Client --HTTPS→ Producer API container --SQL→ PostgreSQL/Outbox --event→ Kafka → Consumer containers --SQL→ Databases`.
+
+```mermaid
+flowchart LR
+    C[Client] -->|HTTPS| P[Producer API container]
+    P -->|SQL transaction| DB[(PostgreSQL + Outbox)]
+    DB --> R[Outbox Relay container]
+    R -->|Kafka protocol| K[(Kafka cluster)]
+    K --> C1[Consumer pod 1]
+    K --> C2[Consumer pod 2]
+    C1 --> D1[(Service DB 1)]
+    C2 --> D2[(Service DB 2)]
+```
+
 - **Công cụ:** Docker/Kubernetes, PostgreSQL, Kafka/RabbitMQ và Grafana.
 - **Các bước:** deploy broker/topic → deploy DB/consumers → deploy producer → gửi event test → kiểm tra kết quả/lag → scale consumer nếu cần.
 - **Bản in đúng theo đề:** một số câu lệnh cần thiết **hoặc** giao diện công cụ trực tuyến dùng để triển khai.
@@ -637,6 +793,18 @@ flowchart LR
 
 - **Core:** theo dõi một event từ producer qua broker đến consumer bằng các ID chung.
 - **View:** `Producer → Kafka → Consumers → OpenTelemetry Collector → [Loki | Jaeger | Prometheus] → Grafana`.
+
+```mermaid
+flowchart LR
+    P[Producer] -->|event + trace context| K[(Kafka)]
+    K --> C[Consumer]
+    P & C -. logs .-> L[Loki]
+    P & C -. spans .-> O[OpenTelemetry Collector]
+    O --> J[Jaeger]
+    P & K & C -. metrics .-> M[Prometheus]
+    L & J & M --> G[Grafana / Monitoring UI]
+```
+
 - **Công cụ:** OpenTelemetry, Loki, Jaeger, Prometheus và Grafana.
 - **Các bước:** tạo `event_id/correlation_id` → đặt vào header → log lúc publish/consume/retry/DLQ → tạo spans → thu lag/error/DLQ metrics → hiển thị và cảnh báo.
 - **Kiểm tra:** phát một event, tìm toàn bộ log/trace theo correlation ID và xem dashboard lag.
