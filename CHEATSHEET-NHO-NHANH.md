@@ -265,15 +265,40 @@ Data Source → Kafka log → Flink/Kafka Streams → Serving DB → Report API 
 
 ---
 
-## 4. Bản in: nhớ theo 4 nhóm
+## 4. Bản in đủ 22 câu
 
-| Nhóm | Câu |
-|---|---|
-| In câu lệnh | 1, 2, 3, 5, 7, 10, 12, 14, 18 |
-| In UI + cây source | 8, 9, 11, 13, 17, 21 |
-| In UI khác | 6: MFE riêng/tổng; 15: danh sách; 22: report/dữ liệu thô |
-| In kết quả observability | 4 và 20 |
-| Không có yêu cầu bản in riêng | 16 và 19 |
+| Câu | Phải lấy bản in nào? |
+|---:|---|
+| 1 | Giao diện/câu lệnh kiểm tra quality + câu lệnh triển khai Microservices. **Không bắt buộc in kết quả load test.** |
+| 2 | Câu lệnh cài đặt mã nguồn Microservices |
+| 3 | Câu lệnh thiết lập và thực hiện scaling |
+| 4 | Câu lệnh xem log/trace + ảnh giao diện kết quả Jaeger |
+| 5 | Câu lệnh cài đặt thêm một component/service |
+| 6 | Ảnh từng Micro-Frontend + ảnh giao diện tổng hợp |
+| 7 | Câu lệnh triển khai Micro-Frontends |
+| 8 | Ảnh giao diện JAMstack + cây thư mục source |
+| 9 | Ảnh giao diện RAG + cây thư mục source |
+| 10 | Câu lệnh **hoặc** giao diện công cụ trực tuyến dùng để triển khai RAG |
+| 11 | Ảnh giao diện LLM Agent + cây thư mục source |
+| 12 | Câu lệnh **hoặc** giao diện công cụ trực tuyến dùng để triển khai Agent |
+| 13 | Ảnh giao diện nhập dữ liệu Event Sourcing + cây thư mục source |
+| 14 | Câu lệnh **hoặc** giao diện công cụ trực tuyến dùng để triển khai Event Sourcing |
+| 15 | Ảnh giao diện danh sách của Event Sourcing |
+| 16 | Đề không nêu yêu cầu bản in riêng |
+| 17 | Ảnh giao diện nhập dữ liệu Event-Driven + cây thư mục source |
+| 18 | Câu lệnh **hoặc** giao diện công cụ trực tuyến dùng để triển khai Event-Driven |
+| 19 | Đề không nêu yêu cầu bản in riêng |
+| 20 | Câu lệnh xem kết quả giám sát + ảnh log/trace/monitoring |
+| 21 | Ảnh giao diện nhập dữ liệu Kappa + cây thư mục source |
+| 22 | Ảnh giao diện báo cáo + ảnh giao diện dữ liệu thô của báo cáo |
+
+Nhớ bốn cụm:
+
+- **Chỉ lệnh:** 1, 2, 3, 5, 7, 10, 12, 14, 18.
+- **UI + source tree:** 8, 9, 11, 13, 17, 21.
+- **UI đặc biệt:** 6, 15, 22.
+- **Kết quả observability thật:** 4, 20.
+- **Không nêu bản in riêng:** 16, 19.
 
 ---
 
@@ -288,4 +313,3 @@ Data Source → Kafka log → Flink/Kafka Streams → Serving DB → Report API 
 Nếu bí, luôn quay về:
 
 > **Input là gì? Process/component làm gì? Output là gì? Dùng công nghệ nào? Đo bằng metric nào?**
-
