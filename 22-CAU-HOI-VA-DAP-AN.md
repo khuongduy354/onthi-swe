@@ -33,6 +33,7 @@
 
 - **Core:** chia hệ thống thành các service độc lập để có thể deploy và scale riêng.
 - **Khi dùng:** hệ thống/đội ngũ lớn, cần phát hành hoặc scale từng chức năng độc lập; đổi lại vận hành phức tạp hơn monolith.
+- **Trade-offs:** dễ deploy/scale từng service, nhưng tăng lỗi mạng, dữ liệu phân tán và chi phí vận hành/giám sát.
 - **1. Performance — Công cụ:** Locust/JMeter; **cách đo:** p95 latency, request/giây và error rate.
 - **2. Scalability — Công cụ:** Locust + `kubectl scale`; **cách đo:** so kết quả cùng một tải trước và sau khi tăng replica.
 - **3. Availability — Công cụ:** `kubectl delete pod`; **cách đo:** số request lỗi và thời gian phục hồi khi một pod chết.
@@ -148,6 +149,7 @@
 
 - **Core:** App Shell ghép các giao diện nhỏ có thể phát triển và deploy độc lập.
 - **Khi dùng:** frontend lớn, nhiều nhóm cần phát hành riêng; ứng dụng nhỏ thường không cần vì tăng độ phức tạp tích hợp.
+- **Trade-offs:** tăng tính tự chủ và cô lập lỗi, nhưng khó đồng bộ giao diện, dependency/version và có thể làm bundle lớn hơn.
 - **Deployability — Công cụ:** CI/CD; **cách đo:** deploy một MFE mà MFE khác không build lại.
 - **Fault isolation — Công cụ:** Playwright/DevTools; **cách đo:** tắt một remote, Shell và phần khác vẫn chạy.
 - **Performance — Công cụ:** Lighthouse; **cách đo:** LCP, INP và kích thước JavaScript.
@@ -193,6 +195,7 @@
 
 - **Core:** tạo sẵn Markup lúc build, phát từ CDN; JavaScript tạo tương tác và gọi API cho dữ liệu động.
 - **Khi dùng:** website nhiều nội dung tĩnh, cần tải nhanh và deploy đơn giản; không phù hợp phần động thời gian thực quá phức tạp.
+- **Trade-offs:** nhanh, dễ scale và ít bề mặt tấn công, nhưng nội dung mới thường phải build lại và chức năng động vẫn phụ thuộc API.
 - **Performance — Công cụ:** Lighthouse; **cách đo:** LCP và TTFB.
 - **Scalability — Công cụ:** k6/Locust; **cách đo:** request/giây, p95 và error rate của URL CDN.
 - **Availability — Công cụ:** Playwright/curl; **cách đo:** tắt API, trang tĩnh vẫn trả `200` và có fallback.
@@ -217,6 +220,7 @@
 
 - **Core:** tìm đoạn tài liệu liên quan rồi đưa vào prompt để LLM trả lời có căn cứ.
 - **Khi dùng:** LLM cần trả lời theo tài liệu riêng hoặc thường xuyên cập nhật mà không huấn luyện lại model.
+- **Trade-offs:** cập nhật kiến thức và citation mà không train lại, nhưng chất lượng phụ thuộc retrieval/chunking và tăng latency, chi phí, rủi ro lộ context.
 - **Retrieval relevance — Công cụ:** bộ câu hỏi chuẩn/script eval; **cách đo:** Recall@k hoặc tỷ lệ top-k chứa đoạn đúng.
 - **Answer/citation correctness — Công cụ:** đáp án chuẩn/kiểm tra tay; **cách đo:** tỷ lệ câu đúng và citation thật sự hỗ trợ câu trả lời.
 - **Performance — Công cụ:** Locust/OpenTelemetry; **cách đo:** p95 retrieval và end-to-end latency.
@@ -261,6 +265,7 @@
 
 - **Core:** agent dùng LLM để chọn và gọi tool nhiều bước cho đến khi hoàn thành hoặc phải dừng.
 - **Khi dùng:** nhiệm vụ cần quyết định nhiều bước hoặc gọi công cụ; chatbot chỉ trả lời văn bản thì không cần agent.
+- **Trade-offs:** tự động hóa được task nhiều bước, nhưng hành vi khó dự đoán hơn, tốn token/thời gian và cần giới hạn quyền, bước, chi phí.
 - **Correctness — Công cụ:** bộ task chuẩn; **cách đo:** task success rate.
 - **Safety — Công cụ:** policy test; **cách đo:** tool thiếu quyền bị chặn hoặc yêu cầu approval.
 - **Bounded execution — Công cụ:** cấu hình agent; **cách đo:** dừng đúng `max_steps`, timeout hoặc cost limit.
@@ -305,6 +310,7 @@
 
 - **Core:** lưu chuỗi event bất biến; trạng thái hiện tại được tính lại từ chuỗi đó.
 - **Khi dùng:** cần audit đầy đủ, replay hoặc tạo nhiều read model; không nên dùng nếu CRUD đơn giản và không cần lịch sử.
+- **Trade-offs:** audit/replay và tạo projection mới tốt, nhưng schema event khó đổi, eventual consistency và rebuild/vận hành phức tạp.
 - **Auditability — Công cụ:** EventStoreDB UI/SQL; **cách đo:** mọi thay đổi có event và ứng dụng không sửa/xóa được.
 - **Recoverability — Công cụ:** rebuild script; **cách đo:** replay tạo lại đúng state/count cũ.
 - **Extensibility — Công cụ:** projector test; **cách đo:** tạo read model mới mà không đổi event cũ.
@@ -393,6 +399,7 @@
 
 - **Core:** producer phát event; broker chuyển/giữ event; consumer độc lập xử lý.
 - **Khi dùng:** nhiều thành phần cần phản ứng bất đồng bộ với cùng sự kiện và cần tách producer khỏi consumer.
+- **Trade-offs:** loose coupling, scale và chịu lỗi tốt, nhưng phải xử lý eventual consistency, duplicate/thứ tự event và debug luồng phân tán.
 - **Loose coupling — Công cụ:** Git/contract test; **cách đo:** thêm consumer mà producer không đổi.
 - **Scalability — Công cụ:** Locust + Kafka/Grafana; **cách đo:** events/giây và lag trước/sau khi tăng partition/consumer.
 - **Availability — Công cụ:** Docker/Kafka UI; **cách đo:** tắt consumer rồi bật lại, event tồn đọng vẫn được xử lý.
@@ -482,6 +489,7 @@
 
 - **Core:** Kappa dùng một stream pipeline; muốn tính lại thì replay event log.
 - **Khi dùng:** dữ liệu đến liên tục, báo cáo gần thời gian thực và event log được giữ đủ lâu để replay.
+- **Trade-offs:** chỉ một stream pipeline và hỗ trợ replay, nhưng phụ thuộc retention/checkpoint và khó xử lý event đến trễ, sai thứ tự hoặc logic stream phức tạp.
 - **Near real time — Công cụ:** Kafka/Flink metrics; **cách đo:** event-to-report latency và lag.
 - **Scalability — Công cụ:** Locust + Kafka/Flink; **cách đo:** events/giây trước/sau khi tăng partition/parallelism.
 - **Fault tolerance — Công cụ:** checkpoint + Docker/Kubernetes; **cách đo:** restart processor mà không mất/trùng kết quả.
@@ -516,7 +524,7 @@
 
 ## Checklist trước khi thi
 
-- Khái niệm có WHAT → HOW → WHY → WHEN.
+- Khái niệm có WHAT → HOW → WHY → WHEN và trade-offs.
 - Logic view có trách nhiệm → quan hệ → công nghệ/ngôn ngữ.
 - Deployment view có node → artifact/module → giao thức.
 - Process view có input → biến đổi → output → công nghệ.
