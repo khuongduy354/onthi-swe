@@ -4,6 +4,7 @@
 - **Tài liệu chính:** [22 câu hỏi rút gọn kèm đáp án](22-CAU-HOI-VA-DAP-AN.md).
 - **Cheat sheet nhớ nhanh:** [Core và quality attributes của 22 câu](CHEATSHEET-NHO-NHANH.md).
 - **Bộ bản in:** [Bản in nộp kèm cho 22 câu](BAN-IN-NOP-KEM-22-CAU.md).
+- **PDF sẵn để in:** [Bộ bản in 22 câu — A4](BAN-IN-NOP-KEM-22-CAU.pdf).
 - **Demo chạy thật câu 4 và 20:** [Observability demo](observability-demo/README.md).
 - **Demo tạo UI/cây source cho bản in:** [Lightweight architecture demos](print-artifacts-demo/README.md).
 - Bản dưới đây chỉ **viết lại đề thi** thành các bullet ngắn gọn; không thêm nội dung trả lời.
